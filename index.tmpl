@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+	  "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<title> Notes On Programming</title>
+<style type="text/css">
+  <!-- tmpl_var style-sheet -->
+</style>
+</head>
+
+
+<body>
+  <div id="mainClm">
+    <h1>Notes On Programming</h1>
+    <br>
+    <br>
+    <br>
+    <br>
+    <!-- tmpl_if edit_part -->
+     <a href="/publish/?"> [publish all posts] </a>
+     <hr>
+     <a href="/create/?"> [create new post] </a>
+     <a href="/undo-discards/?"> [restore discarded posts] </a>
+     <a href="/drop-discards/?"> [permanently remove discarded posts] </a>
+     <hr>
+   <!-- /tmpl_if -->  
+
+  <!-- tmpl_loop blog-posts -->
+  <div id="post">
+    <p><!-- tmpl_var timestamp --> </p> 
+    <h2> 
+    <!-- tmpl_if edit_part -->
+      <a href="/view/?<!--tmpl_var url-part -->"> <!-- tmpl_var title --> </a>
+    <!-- tmpl_else -->
+    <a href="/<!--tmpl_var url-part -->.html"> <!-- tmpl_var title --> </a>
+    <!-- /tmpl_if -->
+    </h2>
+    <div id="post-intro">
+      <!-- tmpl_var intro --> 
+    </div>
+    <!-- tmpl_if edit_part -->
+      <a href="/view/?<!--tmpl_var url-part -->"> <h6> Continue reading "<!-- tmpl_var title -->" </h6></a>
+    <!-- tmpl_else -->
+    <a href="/<!--tmpl_var url-part -->.html"> <h6> Continue reading "<!-- tmpl_var title -->" </h6> </a>
+    <!-- /tmpl_if -->
+
+    <!-- tmpl_if edit_part -->
+    <div id="editButton">
+      <a href="/edit/?<!--tmpl_var url-part -->"> [edit] </a>
+      <a href="/discard/?<!--tmpl_var url-part -->"> [discard] </a>
+    </div>
+    <!-- /tmpl_if -->
+    
+  </div>
+  <!-- /tmpl_loop -->
+  <p id="footer">
+    Powered by <a href="http://www.github.com/fons/cl-bliky"> cl-bliky </a>
+  </p>
+
+  </div>
+  <!-- end of main area -->
+  
+  <!-- start of the sidebar -->
+  
+  <div id="sideBar">
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <div id="about">
+      <!-- tmpl_if edit_part -->
+      <a href="/view/?<!--tmpl_var about -->"> <h2> About </h2></a>
+      <!-- tmpl_else -->
+      <a href="/<!--tmpl_var about -->.html"> <h2> About </h2> </a>
+      <!-- /tmpl_if -->
+      <!-- tmpl_if edit_part -->
+      <a href="/edit/?<!--tmpl_var about -->"> [edit] </a>
+      <!-- /tmpl_if -->
+    </div>
+    <br>
+    <div id="contact">
+      <a href="mailto:programmer.notes@gmail.com" <h2> Contact </h2> </a> 
+    </div>
+    <br>
+    <div id="code">
+      <h2> Code </h2>
+      <!-- tmpl_var code --> 
+
+      <!-- tmpl_if edit_part -->
+      <a href="/edit/?<!--tmpl_var code_url -->"> [edit] </a>
+      <!-- /tmpl_if -->
+    </div>
+  </div> 
+
+  <!--end of sidebar-->
+
+</body>
+
+
+</html>
+
+
