@@ -5,39 +5,38 @@
 (require :elephant)
 (use-package :elephant)
 
-(defconstant MONTHS   '("xx" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
-(defconstant DAYS     '("Mon" "Tues" "Wed" "Thu" "Fri" "Sat" "Sun"))
-(defconstant TIMEZONE '("1" "2" "3" "4" "5" "Est" "6") )
+(defconstant MONTHS     '("xx" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
+(defconstant DAYS         '("Mon" "Tues" "Wed" "Thu" "Fri" "Sat" "Sun"))
+(defconstant TIMEZONE     '("1" "2" "3" "4" "5" "Est" "6") )
 
-(defvar *blog-store* '(:BDB "/home/alfons/store/blogs/" )
-  "global blog store")
+(defconstant DEFAULT-PORT 8050)
 
-(defvar *default-pathname*   #P"/home/alfons/cl-miles")
-(defvar *git-repo-location*  #P"/home/alfons/fons.github.com")
-(defvar *idiot-location*     #P"/tmp/idiot")
-(defvar *bliky-port*         8050)
-(defvar *bliky-server*       "not set")
-
-(setf html-template:*default-template-pathname* #P"/home/alfons/cl-miles")
+(defvar *blog-store-location* (not t))
+(defvar *bliky-server*        (not t))
 
 ;;blog classes 
-(defmacro post()  `'post) ;; c/b nil as well; basically the default
+(defmacro post()  `'post) 
 (defmacro about() `'about)
 (defmacro code()  `'code)
 (defmacro <title>() `"<title>")
 (defmacro <split>() `"<split>")
 
 (setf (hunchentoot:log-file) "/tmp/error.file")
+;;==========================================
+(defun blog-title()
+  (get-blog-title))
+
+(defun contact-info()
+  (get-contact-info))
 
 ;;-----------git-repo-managment code-----------
 
+
 (defun switch-to-repo()
-  (sb-posix:chdir *git-repo-location*))
+  (sb-posix:chdir (get-repo-pathname)))
 
 (defun switch-to-default-path()
   (sb-posix:chdir *default-pathname-defaults*))
-
-(defvar *git-location* #P"/usr/bin/")
 
 (defun string-to-list2(s sep)
   (let ((l ())
@@ -116,7 +115,7 @@
 (defun remove-files()
   (dolist (fn (string-to-list2 (run-cmd "ls") #\|))
     ;;(format t "~A~%" fn)
-    (run-cmd "cp" (format nil "~A ~A" fn *idiot-location*))
+    (run-cmd "cp" (format nil "~A ~A" fn (get-idiot-location)))
     (run-cmd "rm" (format nil "~A" fn ))))
 
 (defun git-publish()
@@ -129,10 +128,9 @@
 	 (args  (list "push" "origin" "master"))
 	 (proc  (sb-ext:run-program cmd args :wait nil :input :stream :output :stream :search t))
 	 (data  (process-output proc)))
-    ;;(format t "~A~%" (process-status *proc*))
-    (if (eql (process-status *proc*) :STOPPED)
+    (if (eql (process-status proc) :STOPPED)
 	(progn
-	  (process-kill *proc* -9)
+	  (process-kill proc -9)
 	  (setf str (format nil "killed stopped process ~A ~A; add pwd to ssh agent; or run push manually" cmd args)))
 	(do ((line (read-line data nil 'eof)
 		   (read-line data nil 'eof)))
@@ -189,11 +187,96 @@
     (setf (type-bit obj) (code))
     (get-instance-by-value 'blog-post 'type-bit (code))))
 
+(defun blog-store-location()
+  (if *blog-store-location*
+      *blog-store-location*
+      (let ((home (sb-posix:getenv "HOME")))
+	(format nil "~A/store/blogs/" home))))
+
+(defun get-settings()
+  (let ((eb (get-from-root 'blog-settings)))
+    (if eb
+	eb
+	(progn
+	  (add-to-root 'blog-settings (make-btree))
+	  (get-from-root 'blog-settings)))))
+
+(defun set-bliky-setting(k v)
+  (setf (get-value k (get-settings)) v))
+
+(defun get-bliky-setting(k)
+  (get-value k (get-settings)))
+
+(defun set-idiot-location(path)
+  (if path
+      (set-bliky-setting 'idiot-location (make-pathname :directory path))
+      (set-bliky-setting 'idiot-location path)))
+  
+(defun get-idiot-location()
+  (let ((val (get-bliky-setting 'idiot-location)))
+    (if val
+	val
+	(set-idiot-location "/tmp/idiot"))))
+
+(defun set-bliky-port(port)
+  (set-bliky-setting 'bliky-port port))
+
+(defun get-bliky-port()
+  (let ((val (get-bliky-setting 'bliky-port)))
+    (if val
+	val
+	(set-bliky-port DEFAULT-PORT))))
+
+(defun set-blog-title(title)
+  (set-bliky-setting 'blog-title title))
+
+(defun get-blog-title()
+  (let ((val (get-bliky-setting 'blog-title)))
+    (if val
+	val
+	(set-blog-title "blog title not set"))))
+
+(defun set-contact-info(co)
+  (set-bliky-setting 'contact-info co))
+
+(defun get-contact-info()
+  (let ((val (get-bliky-setting 'contact-info)))
+    (if val
+	val
+	(set-contact-info "contact info not set"))))
+
+
+(defun set-template-pathname(p)
+  (if p
+      (set-bliky-setting 'template-pathname (make-pathname :directory p))
+      (set-bliky-setting 'template-pathname p)))
+  
+(defun get-template-pathname()
+  (let ((val (get-bliky-setting 'template-pathname)))
+    (if val
+	val
+	(let ((home (sb-posix:getenv "HOME")))
+	  (set-template-pathname (format nil "~A/cl-bliky" home))))))
+
+	
+(defun set-repo-pathname(p)
+  (if p
+      (set-bliky-setting 'repo-pathname (make-pathname :directory p))
+      (set-bliky-setting 'repo-pathname p)))
+  
+(defun get-repo-pathname()
+  (let ((val (get-bliky-setting 'repo-pathname)))
+    (if val
+	val
+	(let ((home (sb-posix:getenv "HOME"))
+	      (user (sb-posix:getenv "USER")))
+	  (set-repo-pathname (format nil "~A/~A.github.com" home user))))))
+
 (defun open-blog-store() 
-  "open the blog store, if not already opened"
-  (if (null *store-controller*)  
-      (open-store  *blog-store* )
-      (print "store already opened")))
+  (let ((blog-store (list :BDB (blog-store-location) )))
+    (if (null *store-controller*)  
+	(open-store  blog-store )
+	(print "store already opened"))))
 
 
 (defpclass blog-post ()
@@ -287,7 +370,7 @@
 	:intro (intro blog-post)))
 
 (defun style-css-path()
-  (concatenate 'string (namestring html-template:*default-template-pathname*) "/style.css"))
+  (concatenate 'string (namestring (get-template-pathname)) "/style.css"))
 
 ;;from
 ;;www.emmett.ca/~sabetts/slurp.html
@@ -307,8 +390,6 @@
     (if about-post
 	(setf (gc-bit about-post) t)
 	nil)))
-
-;;    (redirect-to-edit-page blog-post)))
 
 (defun get-live-blog-post(url-part)
   (let ((objs (get-instances-by-value 'blog-post 'url-part url-part)))
@@ -343,15 +424,19 @@
 (defun code-list()
   (let ((obj (get-code-post)))
     (intro obj)))
-  
+
+(defun template-path(tmpl)
+  (make-pathname :directory (namestring (get-template-pathname) )  :name tmpl))
 
 (defun generate-index-page(tl &key create)
   (with-output-to-string (stream)
     (let ((html-template:*string-modifier* #'identity))
       (html-template:fill-and-print-template
-       #P"index.tmpl"
+       (template-path "index.tmpl")
        (list :style-sheet (style-sheet)
 	     (if create :edit_part) (if create t) 
+	     :blog-title (blog-title)
+	     :contact-info (contact-info)
 	     :about (about-page)
 	     :code     (code-list)
 	     :code_url (url-part (get-instance-by-value 'blog-post 'type-bit (code)))
@@ -373,6 +458,7 @@
 			     (html-template:fill-and-print-template
 			      tmpl
 			      (list :style-sheet (style-sheet)
+				    :blog-title (blog-title)
 			            :title (title blog-post)
 				    :url_part url-part
 				    :timestamp (fmt-timestamp (timestamp blog-post))
@@ -385,7 +471,7 @@
     (generate-blog-post-page-alt up tmpl)))
 
 (defun view-blog-post-page()
-  (generate-blog-post-page #P"post.tmpl"))
+  (generate-blog-post-page (template-path "post.tmpl")))
 
 
 (defun save-blog-post() 
@@ -397,14 +483,17 @@
     (hunchentoot:redirect "/" )))
 
 (defun split-sequence(seq tkw kw)
-  (let* ((ltkw   (length tkw))
-	 (lkw    (length kw))
-	 (tkwpos (search tkw seq))
-	 (kwpos  (search kw seq))
-	 (title  (subseq seq 0 tkwpos))
-	 (intro  (subseq seq (+ tkwpos ltkw 1) kwpos))
-	 (body   (subseq seq (+ kwpos lkw 1))))
-    (values title intro body)))
+  (handler-case
+      (let* ((ltkw   (length tkw))
+	     (lkw    (length kw))
+	     (tkwpos (search tkw seq))
+	     (kwpos  (search kw  seq))
+	     (title  (subseq seq 0 tkwpos))
+	     (intro  (subseq seq (+ tkwpos ltkw 1) kwpos))
+	     (body   (subseq seq (+ kwpos lkw 1))))
+	(values title intro body))
+    (error(c) 
+      (values "new blog post created from upload" "" seq))))
 	 
 (defun redirect-to-edit-page(blog-post)
   (hunchentoot:redirect (concatenate 'string "/edit/?"(url-part blog-post))))
@@ -451,11 +540,13 @@
     (generate-blog-post-page-alt up tmpl)))
   
 (defun create-blog-post-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (create-empty-blog-post #P"post-edit.tmpl"))
+  (cond ((eq (hunchentoot:request-method) :GET)  (create-empty-blog-post 
+						  (template-path "post-edit.tmpl")))
 	((eq (hunchentoot:request-method) :POST) (save-blog-post))))
 
 (defun edit-blog-post-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (generate-blog-post-page #P"post-edit.tmpl"))
+  (cond ((eq (hunchentoot:request-method) :GET)  (generate-blog-post-page 
+						  (template-path "post-edit.tmpl")))
 	((eq (hunchentoot:request-method) :POST) (save-blog-post))))
 
 (defun discard-blog-post-page()
@@ -485,7 +576,7 @@
 
 (defun push-pages-to-repo()
   (labels ((publish-index-page()
-	     (let ((fn (concatenate 'string (namestring *git-repo-location*) "/index.html")))
+	     (let ((fn (concatenate 'string (namestring (get-repo-pathname)) "/index.html")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
 		 (format stream (generate-index-page #'use-static-template)))))
 	   (url-parts()
@@ -497,9 +588,9 @@
 	       (nreverse lst)))
 	   (publish-other-pages()
 	     (dolist (up (url-parts))
-	       (let ((fn (concatenate 'string (namestring *git-repo-location*) "/" up ".html")))
+	       (let ((fn (concatenate 'string (namestring (get-repo-pathname)) "/" up ".html")))
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
-		   (format stream (generate-blog-post-page-alt up #P"post.tmpl")))))))
+		   (format stream (generate-blog-post-page-alt up (template-path "post.tmpl"))))))))
     (publish-index-page)
     (publish-other-pages)))
 
@@ -533,8 +624,8 @@
 
 (defun start-server()
   (open-blog-store)
-  (setf *bliky-server* (hunchentoot:start-server :port *bliky-port*)))
+  (setf *bliky-server* (hunchentoot:start-server :port (get-bliky-port))))
 
 (defun stop-server()
-  (close-store)
-  (hunchentoot:stop-server *bliky-server*))
+  (hunchentoot:stop-server *bliky-server*)
+  (close-store))
