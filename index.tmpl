@@ -18,9 +18,12 @@
     <br>
     <br>
     <!-- tmpl_if edit_part -->
-     <a href="/publish/?"> [publish all posts] </a>
+     <a href="/publish/?<!-- tmpl_var sandbox-repo-qs -->" > [publish  to sandbox repo] </a>
+     <a href="/publish/?<!-- tmpl_var main-repo-qs -->" > [publish  to main repo ] </a>
      <hr>
-     <a href="/create/?"> [create new post] </a>
+     <a href="/create/?post"> [create new post] </a>
+     <a href="/create/?sidebar"> [create new side bar element] </a>
+     <hr>
      <a href="/undo-discards/?"> [restore discarded posts] </a>
      <a href="/drop-discards/?"> [permanently remove discarded posts] </a>
      <hr>
@@ -89,18 +92,29 @@
       <a href="mailto:<!-- tmpl_var contact-info -->" <h2> Contact </h2> </a> 
     </div>
     <br>
-    <div id="code">
-      <h2> Code </h2>
-      <!-- tmpl_var code --> 
 
+    <div id="about">
+      
+      <!-- tmpl_loop sidebars -->
+      <h2> <!-- tmpl_var title --> </h2>
+      <div id="intro">
+	<!-- tmpl_var intro -->
+      </div>
+      <div id="body">
+	<!-- tmpl_var body --> 
+      </div>
       <!-- tmpl_if edit_part -->
-      <a href="/edit/?<!--tmpl_var code_url -->"> [edit] </a>
+      <div id="editButton">
+	<a href="/edit/?<!--tmpl_var url-part -->"> [edit] </a>
+	<a href="/discard/?<!--tmpl_var url-part -->"> [discard] </a>
+      </div>
       <!-- /tmpl_if -->
-    </div>
-  </div> 
 
-  <!--end of sidebar-->
-
+      <!-- /tmpl_loop -->
+    
+    </div> 
+    <!--end of sidebar-->
+    
 </body>
 
 
