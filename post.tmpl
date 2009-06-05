@@ -17,17 +17,27 @@
       <br>
       <br>
       <br>
-      <div id="post">
+      <div id="<!-- tmpl_var type -->">
+	<div id="post-type" style="visibility:hidden">
+	  <p>"<!-- tmpl_var type -->"</p>
+	</div>
+	<div id="post-timestamp" >
 	<p><!-- tmpl_var timestamp --> </p>
+	</div>
+	<div id="post-header">
 	<h2> <!-- tmpl_var  title -->  </h2>
-	<div id="intro">
+	</div>
+	<div id="post-intro">
 	  <!-- tmpl_var intro -->
 	</div>
-	<div id="body">
+	<div id="post-body">
 	  <!-- tmpl_var body --> 
 	</div>
+	<div id="post-timestamp-id" style="visibility:hidden">
+	  <p><!-- tmpl_var timestamp-id --> </p>
+	</div>
       </div>
-
+      
     <p id="footer">
       Powered by <a href="http://www.github.com/fons/cl-bliky"> cl-bliky </a>
     </p>

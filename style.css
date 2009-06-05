@@ -183,7 +183,7 @@ p {
               padding:0px 0px 0px 0px;
               list-style-type:none;
               font-size:105%;
-              color:#9E5205
+              color:#111111
               }
 
 #description{
@@ -195,19 +195,19 @@ p {
 #sideBar a{
             margin:0px 0px 0px 0px;
             #width:80%;
-            color:#0000cc;
+            color:#555555
             text-decoration:none;
             font-family : , 'Sans Serif',;
             font-size : 14px;
             }
 
 #sideBar ul a{padding:2px;margin:1px;width:100%;border:none;
-               color:#999999;
+               color:#555555;
                text-decoration:none;}
-#sideBar ul a:link{color:black;}
-#sideBar ul a:visited{color:grey;}
-#sideBar ul a:active{color:#ff0000;}
-#sideBar ul a:hover{color:#red;text-decoration:none;}
+######sideBar ul a:link{color:black;}
+######sideBar ul a:visited{color:black;}
+######sideBar ul a:active{color:#ff0000;}
+#######sideBar ul a:hover{color:#red;text-decoration:none;}
 
 pre,code{
           border: 0.15em solid #D6D6D6;
@@ -224,13 +224,13 @@ pre,code{
         background:#F5F5F5
         }
 p#footer { 
-           color:#bbb;
+           color: #444444;
            font-size:.75em;
            margin-top: 3em;
            text-align: center;
            text-indent: 0;
            }
-p#footer a { color:#999; }
+p#footer a { color:#222222; }
 strike{color:#999999;}
 .bug{padding:5px;border:0px;}
 .byline{padding:0px;margin:0px;color:#444444;font-size:80%;}

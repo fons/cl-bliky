@@ -1,3 +1,5 @@
+(asdf:operate 'asdf:load-op :cl-html-parse)
+(asdf:operate 'asdf:load-op :htmlgen)
 (in-package :cl-user)
 (defpackage :blog-cl)
 (require :hunchentoot)
@@ -10,22 +12,27 @@
 (defconstant TIMEZONE     '("1" "2" "3" "4" "5" "Est" "6") )
 (defconstant DEFAULT-PORT 8050)
 
+;;(eval-when (:compile-toplevel :load-toplevel)
+;;  (defconstant USRMODE
+;;    (logior sb-posix:s-irusr sb-posix:s-ixusr)))
+
+(defconstant USRMODE (logior sb-posix:s-irusr sb-posix:s-ixusr sb-posix:s-iwusr))
+
 (defvar *blog-store-location* (not t))
 (defvar *bliky-server*        (not t))
 
 ;;blog classes
 (defmacro post()      `'post) 
 (defmacro about()     `'about)
-(defmacro code()      `'code)
 (defmacro sidebar()   `'sidebar)
 
-
+;; macro's used when reading in an uploaded file.
 (defmacro <title>() `"<title>")
 (defmacro <split>() `"<split>")
 
 
-(defmacro sandbox-repo-qs() `"sandbox-repo")
 (defmacro main-repo-qs()    `"main-repo")
+(defmacro sandbox-repo-qs() `"sandbox-repo")
 
 
 (setf (hunchentoot:log-file) "/tmp/error.file")
@@ -146,6 +153,10 @@
 	(set-contact-info "contact info not set"))))
 
 ;;---------------path name code-----------------------------------------
+(defun create-if-missing(path)
+  (unless (probe-file path) (sb-posix:mkdir path USRMODE)))
+
+
 (defun set-bliky-pathname(path name)
   ;; nil is used to signal 'not set
   (if path
@@ -153,12 +164,14 @@
       (set-bliky-setting name path))) 
 
 (defun get-bliky-pathname(name default-path)
-  ;; side effect : set path if not found to whatever
-  ;; default-path generates.
+  ;; side effects : 
+  ;; 1. set path if not found to whatever default-path generates.
+  ;; 2. create directory if missing
   (let ((val (get-bliky-setting name)))
     (if val
 	val
 	(let ((path (funcall default-path)))
+	  (create-if-missing path)
 	  (set-bliky-pathname path name)))))
 
 
@@ -189,17 +202,14 @@
 		   (user (sb-posix:getenv "USER")))	     
 	       (format nil "~A/~A.github.com" home user))))
     (get-bliky-pathname 'repo-pathname #'df-path)))
-
 ;;--
 (defun set-sandbox-pathname(p)
   (set-bliky-pathname p 'sandbox-pathname))
 
-  
 (defun get-sandbox-pathname()
   (labels ((df-path()
-	     (let ((home (sb-posix:getenv "HOME"))
-		   (user (sb-posix:getenv "USER")))	     
-	       (format nil "~A/~A.sandbox.github.com" home user))))
+	     (let ((user (sb-posix:getenv "USER")))
+	       (format nil "/tmp/~A.sandbox.github.com" user))))
     (get-bliky-pathname 'sandbox-pathname #'df-path)))
 
 ;;-----------------------------------------------------------------------
@@ -316,7 +326,7 @@
 	 (args  (list "push" "origin" "master"))
 	 (proc  (sb-ext:run-program cmd args :wait nil :input :stream :output :stream :search t))
 	 (data  (process-output proc)))
-    (if (eql (process-status proc) :STOPPED)
+    (if (not (eql (process-status proc) :RUNNING))
 	(progn
 	  (process-kill proc -9)
 	  (setf str (format nil 
@@ -341,7 +351,7 @@
   (make-instance 'blog-post :title title :intro intro :body body :type-bit type))
 
 (defun create-blog-post-template(type)
-  (let* ((title "new blog post")
+  (let* ((title (format nil "new blog post dd ~A" (fmt-timestamp (get-universal-time))))
 	 (intro "")
 	 (body ""))
     (create-blog-post title intro body type)))
@@ -351,12 +361,6 @@
 	 (intro "")
 	 (body ""))
     (create-blog-post title intro body (about))))
-
-(defun create-code-post()
-  (let* ((title "Code")
-	 (intro "")
-	 (body ""))
-    (create-blog-post title intro body (code))))
 
 
 (defun open-blog-store() 
@@ -422,7 +426,7 @@
   (with-open-file (stream (style-css-path) :direction :input)
     (slurp-stream stream)))
 
-
+;;needs to get all instances
 (defun discard-post-by-type(type)
   (let ((post (get-instance-by-value 'blog-post 'type-bit type)))
     (if post
@@ -431,6 +435,14 @@
 
 (defun get-live-blog-post(url-part)
   (let ((objs (get-instances-by-value 'blog-post 'url-part url-part)))
+    (if objs
+	(dolist (obj objs)
+	  (if (p-blogpost-active obj)
+	      (return obj)))
+	nil)))
+
+(defun get-blog-post-by-timestamp(ts)
+  (let ((objs (get-instances-by-value 'blog-post 'timestamp ts)))
     (if objs
 	(dolist (obj objs)
 	  (if (p-blogpost-active obj)
@@ -453,23 +465,34 @@
   (let ((obj (get-about-post)))
     (url-part obj)))
 
-(defun get-code-post()
-  (let ((code-post (get-instance-by-value 'blog-post 'type-bit (code))))
-    (if (null code-post)
-	(create-code-post)
-	code-post)))
-
-(defun code-list()
-  (let ((obj (get-code-post)))
-    (intro obj)))
 
 (defun template-path(tmpl)
   (make-pathname :directory (namestring (get-template-pathname) )  :name tmpl))
 
 
+(defun generate-error-page(trace msg)
+  (handler-case
+      (with-output-to-string (stream)
+	(let ((html-template:*string-modifier* #'identity))
+	  (html-template:fill-and-print-template
+	   (template-path "error.tmpl")
+	   (list :error-condition trace
+		 :error-message   msg)
+	   :stream stream)))
+    (error(c) 
+      (format nil "an error when generating the error page: ~A" c))))
+
+(defun protect(f)
+  (lambda()
+    (handler-case 
+	(funcall f)
+      (error(c)
+	(generate-error-page c "an error occured when generating static pages")))))
 
 (defun use-static-template(blog-post)
   (list :timestamp (fmt-timestamp (timestamp blog-post))
+	:timestamp-id (timestamp blog-post)
+	:type (string-downcase (type-bit blog-post))
 	:title (title blog-post)
 	:url-part (url-part blog-post)
 	:intro (intro blog-post)))
@@ -490,7 +513,7 @@
   (loop for blog-post in (get-instances-by-range 'blog-post 
 						 'timestamp nil nil)
      if (p-sidebar blog-post )
-     collect (funcall tlf blog-post)))
+     collect (cons :body (cons (body blog-post) (funcall tlf blog-post)))))
   
 (defun generate-index-page(tlf &key create)
   (with-output-to-string (stream)
@@ -500,12 +523,10 @@
        (list :style-sheet (style-sheet)
 	     (if create :edit_part) (if create t) 
 	     :blog-title (blog-title)
-	     :sandbox-repo-qs  (sandbox-repo-qs)
 	     :main-repo-qs     (main-repo-qs)
+	     :sandbox-repo-qs  (sandbox-repo-qs)
 	     :contact-info     (contact-info)
 	     :about            (about-page)
-	     :code             (code-list)
-	     :code_url         (url-part (get-instance-by-value 'blog-post 'type-bit (code)))
 	     :sidebars         (collect-sidebars tlf)
 	     :blog-posts       (collect-posts    tlf))
 	     :stream stream))))
@@ -526,6 +547,8 @@
 					:title (title blog-post)
 					:url_part url-part
 					:timestamp (fmt-timestamp (timestamp blog-post))
+					:timestamp-id (timestamp blog-post)
+					:type         (string-downcase (type-bit blog-post))
 					:intro (intro blog-post) 
 					:body (body blog-post))
 				  :stream stream)))))
@@ -545,6 +568,7 @@
     (setf (body     blog-post) (hunchentoot:post-parameter "body"))
     (setf (url-part blog-post) (make-url-part (title blog-post)))
     (hunchentoot:redirect "/" )))
+
 
 (defun split-sequence(seq tkw kw)
   (handler-case
@@ -571,10 +595,10 @@
     (let ((blog-post (get-blog-post (hunchentoot:query-string))))
       (multiple-value-bind 
 	    (title intro body) (read-file (hunchentoot:post-parameter "file"))
-      (setf (title  blog-post) title) 
-      (setf (intro  blog-post) intro) 
-      (setf (body   blog-post) body)
-      (setf (url-part blog-post) (make-url-part (title blog-post))))
+	(setf (title  blog-post) title) 
+	(setf (intro  blog-post) intro) 
+	(setf (body   blog-post) body)
+	(setf (url-part blog-post) (make-url-part (title blog-post))))
       (redirect-to-edit-page blog-post))))
 
 
@@ -599,13 +623,17 @@
   (let ((blog-posts (get-instances-by-value 'blog-post 'gc-bit t)))
     (drop-instances blog-posts)))
 
+(defun str-strip(str)
+  (string-trim '(#\Space #\Newline #\Tab #\") str))
+
+
 (defun str2type(str) 
-  (cond ((eq    (not t) str)    (post))
-        ((equal "post"  str)    (post))
-	((equal "about" str)    (about))
-	((equal "code"  str)    (code))
-	((equal "sidebar" str) (sidebar))
-	( t                    (post))))
+  (let ((s (str-strip str)))
+    (cond ((eq    (not t)   s)    (post))
+	  ((equal "post"    s)    (post))
+	  ((equal "about"   s)    (about))
+	  ((equal "sidebar" s)    (sidebar))
+	  ( t                     (post)))))
 
 (defun create-empty-blog-post(tmpl type-str)
   (let* ((bp (create-blog-post-template (str2type type-str)))
@@ -666,13 +694,9 @@
     (publish-index-page)
     (publish-other-pages)))
 
-(defun query-string-to-repo-path(qs)
-  (cond ((equal qs (sandbox-repo-qs)) (get-sandbox-pathname))
-	((equal qs (main-repo-qs))    (get-repo-pathname))
-	( t                           (get-sandbox-pathname))))
 
 (defun publish-pages()
-  (let ((repo-pathname (query-string-to-repo-path (hunchentoot:query-string))))
+  (let ((repo-pathname (get-repo-pathname)))
     (switch-to-repo repo-pathname)
     (git-publish-branch)
     (remove-files)
@@ -685,24 +709,177 @@
     (git-publish)
     (switch-to-default-path))
     (hunchentoot:redirect "/"))
+;
+(defun index-unless(d)
+  (if (> (length d) 1)
+      d
+      "index.html"))
+
+(defun static-page-path(p)
+  (let ((name (index-unless p))) 
+    (concatenate 'string (namestring (get-sandbox-pathname)) name)))
+
+(defun get-static-page(p) 
+  (with-open-file (stream (static-page-path p ) :direction :input)
+    (slurp-stream stream)))
+
+(defun static-pages()
+  (get-static-page (hunchentoot:request-uri)))
+
+
+(defun generate-static-pages()
+  (let ((repo-path (get-sandbox-pathname)))
+    (push-pages-to-repo (namestring repo-path))
+    (get-static-page "index.html")))
+  
 
 (setq hunchentoot:*dispatch-table* 
-      (list (hunchentoot:create-regex-dispatcher "^/$"               'generate-editable-index-page)
-	    (hunchentoot:create-regex-dispatcher "^/view/$"          'view-blog-post-page)
-	    (hunchentoot:create-regex-dispatcher "^/edit/$"          'edit-blog-post-page)
-	    (hunchentoot:create-regex-dispatcher "^/create/save-file"  'save-file)
-	    (hunchentoot:create-regex-dispatcher "^/edit/save-file"  'save-file)
-	    (hunchentoot:create-regex-dispatcher "^/discard/$"       'discard-blog-post-page)
-	    (hunchentoot:create-regex-dispatcher "^/publish/$"       'publish-pages)
-	    (hunchentoot:create-regex-dispatcher "^/undo-discards/$" 'undo-discards)
-	    (hunchentoot:create-regex-dispatcher "^/drop-discards/$" 'drop-discards)
-	    (hunchentoot:create-regex-dispatcher "^/create/$"        'create-blog-post-page)))
-
+      (list (hunchentoot:create-regex-dispatcher "[.]html"            (protect 'static-pages))
+	    (hunchentoot:create-regex-dispatcher "^/$"                (protect 'generate-editable-index-page))
+	    (hunchentoot:create-regex-dispatcher "^/view/$"           (protect 'view-blog-post-page))
+	    (hunchentoot:create-regex-dispatcher "^/edit/$"           (protect 'edit-blog-post-page))
+	    (hunchentoot:create-regex-dispatcher "^/create/save-file" (protect 'save-file))
+	    (hunchentoot:create-regex-dispatcher "^/edit/save-file"   (protect 'save-file))
+	    (hunchentoot:create-regex-dispatcher "^/discard/$"        (protect 'discard-blog-post-page))
+	    (hunchentoot:create-regex-dispatcher "^/publish/$"        (protect 'publish-pages))
+	    (hunchentoot:create-regex-dispatcher "^/static-pages/$"   (protect 'generate-static-pages))
+	    (hunchentoot:create-regex-dispatcher "^/undo-discards/$"  (protect 'undo-discards))
+	    (hunchentoot:create-regex-dispatcher "^/drop-discards/$"  (protect 'drop-discards))
+	    (hunchentoot:create-regex-dispatcher "^/create/$"         (protect 'create-blog-post-page))))
 
 (defun start-server()
   (open-blog-store)
-  (setf *bliky-server* (hunchentoot:start-server :port (get-bliky-port))))
+  (unless *bliky-server* (setf *bliky-server* (hunchentoot:start-server :port (get-bliky-port)))))
 
 (defun stop-server()
   (hunchentoot:stop-server *bliky-server*)
+  (setf *bliky-server* nil)
   (close-store))
+
+;;;---------------------------------------------------
+
+(defun disassem-html-page(page)
+  (let ((links nil))    
+    (labels ((get-page(path) 
+	       (with-open-file (stream path  :direction :input)
+		 (slurp-stream stream)))
+	     (link-cb (element) 
+	       (labels ((is-div(lst)
+			  (cond ((consp lst) (and (equal :DIV (car lst)) (eq :ID (cadr lst))))
+				( t (not t))))
+			(get-div-tag(lst)
+			  (if (is-div lst)
+			      (car (cdr (cdr lst)))
+			      nil))
+			(describe-tag(tag)
+			  ;;(format t "in describe-tag ~A~%" tag)
+			  (cond ((equal tag "post-timestamp-id") tag)
+				((equal tag "post-body")         tag)
+				((equal tag "post-intro")        tag)
+				((equal tag "post-header")       tag) 
+				((equal tag "post-type")         tag) 
+				((equal tag "post-timestamp")    tag)
+				( t                            (not t))))
+			(unpack(el)
+			  el))
+		 (let ((tag  (describe-tag (get-div-tag (car element)))))
+		   (if tag 
+		       (push (list tag (unpack (cdr element))) links))))))
+      (let ((cb (cons (cons :DIV #'link-cb ) nil)))
+	(html-parse:parse-html (get-page page) :callbacks cb )
+	links))))
+
+(defun unpack (str up)
+  (labels ((find-piece(str lst &optional (accum nil))
+	     (cond ((equal str (car (car lst))) (push (cadr (car lst)) accum))
+		   ((eq lst nil) accum)
+		   (t            (find-piece str (cdr lst) accum)))))
+    (let ((piece (find-piece str up)))
+      (labels ((up-ts(lst) 
+		 (str-strip (cadr (caar lst))))
+	     ;;;
+	       (rm-wrapper-tags(seq)
+		 (let ((slen (length "<BODY>"  )) 
+		     (nlen (length "</BODY>" )))
+		   (subseq seq slen (- (length seq) nlen ))))
+	     ;;;
+	       (to-wrapped-html(lst)
+		 (let ((s (cons :body (car lst))))
+		   (with-output-to-string (stream)
+		     (net.html.generator:html-print s stream))))
+	     ;;;
+	       (to-html(lst)
+		 (str-strip (rm-wrapper-tags (to-wrapped-html lst)))))
+	(cond ((equal "post-timestamp-id"  str ) (up-ts   piece))
+	      ((equal "post-timestamp"     str ) (up-ts   piece))
+	      ((equal "post-header"        str ) (up-ts   piece))
+	      ((equal "post-type"          str ) (up-ts   piece))
+	      ((equal "post-intro"         str ) (to-html piece))
+	      ((equal "post-body"          str ) (to-html piece))
+	      (t nil))))))
+
+
+(defun unpack-post(p)
+  (let ((ts-id  (parse-integer (unpack "post-timestamp-id" p)))
+	(ts                    (unpack "post-timestamp" p))
+	(header                (unpack "post-header" p))
+	(intro                 (unpack "post-intro" p))
+	(body                  (unpack "post-body" p))
+	(type   (str2type      (unpack "post-type" p))))
+    (values ts-id ts type header intro body)))
+
+(defun mv-about()
+  (let ((lst (get-instances-by-value 'blog-post 'type-bit (about)))
+	(seed (random (floor (/ (get-universal-time) 100000000)))))
+    (dolist (obj lst)
+      (setf (type-bit obj) (sidebar))
+      (setf (title obj) (format nil "About-~A-~A" (get-universal-time) seed))
+      (setf (url-part obj) (make-url-part (title obj)))
+      (setf (gc-bit   obj) t))))
+
+(defun recreate-post(ts-id type header intro body)
+  ;; the about post is always generated when it's not found
+  ;; move the on found to the sidebar, so no info is lost..
+  (when (equal type (about) ) (mv-about))
+  (let ((post (create-blog-post header intro body type)))
+    (setf (timestamp post) ts-id)
+    post))
+      
+
+(defun import-blog-post(html-page)
+  (multiple-value-bind
+	(ts-id ts type header intro body)
+      (unpack-post (disassem-html-page html-page))
+    (declare (ignore ts))
+    (let ((pst (get-blog-post-by-timestamp ts-id)))
+      (unless pst  (recreate-post ts-id type header intro body)))))
+
+(defun import-repo(repo-path)
+  (let ((lst (directory 
+	      (make-pathname :name :wild :type :wild :defaults repo-path))))
+    (dolist (f lst)
+      (let* ((fn    (namestring f))
+	     (not-index? (not (search "/index.html" fn :from-end t)))
+	     (html? (search ".html" fn :from-end t)))
+	(when (and html? not-index?) (import-blog-post fn))))))
+
+
+
+;;tests
+
+(defun test-html-alt(s)
+  (with-output-to-string (stream)
+    (net.html.generator:html-stream stream (:body (:princ s)))))
+
+(defun test-html(s)
+  (with-output-to-string (stream)
+    (net.html.generator:html-print s stream)))
+
+    
+(defun up-test()
+  (disassem-html-page (format nil "~A/~A" (get-repo-pathname) "code.html")))
+
+(defun p-test()
+  (import-blog-post (format nil "~A/~A" (get-repo-pathname) "about.html")))
+
+
