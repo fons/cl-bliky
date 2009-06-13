@@ -11,7 +11,7 @@
 (defconstant DAYS         '("Mon" "Tues" "Wed" "Thu" "Fri" "Sat" "Sun"))
 (defconstant TIMEZONE     '("1" "2" "3" "4" "5" "Est" "6") )
 (defconstant DEFAULT-PORT 8050)
-
+(defconstant DEFAULT-REMOTE-REPO-HOST "github.com")
 ;;(eval-when (:compile-toplevel :load-toplevel)
 ;;  (defconstant USRMODE
 ;;    (logior sb-posix:s-irusr sb-posix:s-ixusr)))
@@ -37,6 +37,17 @@
 
 (setf (hunchentoot:log-file) "/tmp/error.file")
 
+(defun str-strip(str)
+  (string-trim '(#\Space #\Newline #\Tab #\") str))
+
+
+;;from
+;;www.emmett.ca/~sabetts/slurp.html
+;;
+(defun slurp-stream(stream)
+  (let ((seq (make-string (file-length stream))))
+    (read-sequence seq stream)
+    seq))
 
 
 (defun fmt-timestamp(st)
@@ -54,6 +65,13 @@
 	    (nth tz TIMEZONE)
 	    year)))
 
+(defun str2type(str) 
+  (let ((s (str-strip str)))
+    (cond ((eq    (not t)   s)    (post))
+	  ((equal "post"    s)    (post))
+	  ((equal "about"   s)    (about))
+	  ((equal "sidebar" s)    (sidebar))
+	  ( t                     (post)))))
 
 (defpclass blog-post ()
   ((title :initarg :title
@@ -152,6 +170,14 @@
 	val
 	(set-contact-info "contact info not set"))))
 
+(defun set-remote-repo(repo)
+  (set-bliky-setting 'remote-repo repo))
+
+(defun get-remote-repo()
+  (let ((val (get-bliky-setting 'remote-repo)))
+    (if val
+	val
+	(set-bliky-port DEFAULT-REMOTE-REPO-HOST))))
 ;;---------------path name code-----------------------------------------
 (defun create-if-missing(path)
   (unless (probe-file path) (sb-posix:mkdir path USRMODE)))
@@ -229,9 +255,12 @@
   (get-contact-info))
 
 
+(defun infer-repo-name ()
+  (let* ((pn (namestring (get-repo-pathname)))
+	(index (search "/" pn :from-end t :end2 (- (length pn) 1))))
+    (subseq pn (+ index 1) (- (length pn) 1))))
+
 ;;-----------git-repo-managment code-----------
-
-
 (defun switch-to-repo(repo-path)
   (sb-posix:chdir repo-path))
 
@@ -339,13 +368,17 @@
 	  (setf str (concatenate 'string str line "|"))))
     str))
 
-;;-------------------
+(defun p-blogpost-active(blog-post)
+  (cond ((not (gc-bit   blog-post))        t) 
+	( t                           (not t))))
 
-(defun blog-posts() 
-  (or (get-from-root "blog-posts")
-      (let ((blog-posts (make-pset)))
-	(add-to-root "blog-posts" blog-posts)
-	(blog-posts))))
+(defun get-blog-post-by-timestamp(ts)
+  (let ((objs (get-instances-by-value 'blog-post 'timestamp ts)))
+    (if objs
+	(dolist (obj objs)
+	  (if (p-blogpost-active obj)
+	      (return obj)))
+	nil)))
 
 (defun create-blog-post(title intro body type)
   (make-instance 'blog-post :title title :intro intro :body body :type-bit type))
@@ -362,6 +395,129 @@
 	 (body ""))
     (create-blog-post title intro body (about))))
 
+(defun make-url-part(title)
+  (string-downcase 
+   (delete-if #'(lambda(x) (not (or (alphanumericp x) (char= #\- x))))
+	      (substitute #\- #\Space title))))
+
+;;;---------Importing a Repo------------------------------------------
+
+(defun disassem-html-page(page)
+  (let ((links nil))    
+    (labels ((get-page(path) 
+	       (with-open-file (stream path  :direction :input)
+		 (slurp-stream stream)))
+	     (link-cb (element) 
+	       (labels ((is-div(lst)
+			  (cond ((consp lst) (and (equal :DIV (car lst)) (eq :ID (cadr lst))))
+				( t (not t))))
+			(get-div-tag(lst)
+			  (if (is-div lst)
+			      (car (cdr (cdr lst)))
+			      nil))
+			(describe-tag(tag)
+			  ;;(format t "in describe-tag ~A~%" tag)
+			  (cond ((equal tag "post-timestamp-id") tag)
+				((equal tag "post-body")         tag)
+				((equal tag "post-intro")        tag)
+				((equal tag "post-header")       tag) 
+				((equal tag "post-type")         tag) 
+				((equal tag "post-timestamp")    tag)
+				( t                            (not t))))
+			(unpack(el)
+			  el))
+		 (let ((tag  (describe-tag (get-div-tag (car element)))))
+		   (if tag 
+		       (push (list tag (unpack (cdr element))) links))))))
+      (let ((cb (cons (cons :DIV #'link-cb ) nil)))
+	(html-parse:parse-html (get-page page) :callbacks cb )
+	links))))
+
+(defun unpack (str up)
+  (labels ((find-piece(str lst &optional (accum nil))
+	     (cond ((equal str (car (car lst))) (push (cadr (car lst)) accum))
+		   ((eq lst nil) accum)
+		   (t            (find-piece str (cdr lst) accum)))))
+    (let ((piece (find-piece str up)))
+      (labels ((up-ts(lst) 
+		 (str-strip (cadr (caar lst))))
+	     ;;;
+	       (rm-wrapper-tags(seq)
+		 (let ((slen (length "<BODY>"  )) 
+		     (nlen (length "</BODY>" )))
+		   (subseq seq slen (- (length seq) nlen ))))
+	     ;;;
+	       (to-wrapped-html(lst)
+		 (let ((s (cons :body (car lst))))
+		   (with-output-to-string (stream)
+		     (net.html.generator:html-print s stream))))
+	     ;;;
+	       (to-html(lst)
+		 (str-strip (rm-wrapper-tags (to-wrapped-html lst)))))
+	(cond ((equal "post-timestamp-id"  str ) (up-ts   piece))
+	      ((equal "post-timestamp"     str ) (up-ts   piece))
+	      ((equal "post-header"        str ) (up-ts   piece))
+	      ((equal "post-type"          str ) (up-ts   piece))
+	      ((equal "post-intro"         str ) (to-html piece))
+	      ((equal "post-body"          str ) (to-html piece))
+	      (t nil))))))
+
+
+(defun unpack-post(p)
+  (let ((ts-id  (parse-integer (unpack "post-timestamp-id" p)))
+	(ts                    (unpack "post-timestamp" p))
+	(header                (unpack "post-header" p))
+	(intro                 (unpack "post-intro" p))
+	(body                  (unpack "post-body" p))
+	(type   (str2type      (unpack "post-type" p))))
+    (values ts-id ts type header intro body)))
+
+(defun mv-about()
+  (let ((lst (get-instances-by-value 'blog-post 'type-bit (about)))
+	(seed (random (floor (/ (get-universal-time) 100000000)))))
+    (dolist (obj lst)
+      (setf (type-bit obj) (sidebar))
+      (setf (title obj) (format nil "About-~A-~A" (get-universal-time) seed))
+      (setf (url-part obj) (make-url-part (title obj)))
+      (setf (gc-bit   obj) t))))
+
+(defun recreate-post(ts-id type header intro body)
+  ;; the about post is always generated when it's not found
+  ;; move the on found to the sidebar, so no info is lost..
+  (when (equal type (about) ) (mv-about))
+  (let ((post (create-blog-post header intro body type)))
+    (setf (timestamp post) ts-id)
+    post))
+      
+
+(defun import-blog-post(html-page)
+  (multiple-value-bind
+	(ts-id ts type header intro body)
+      (unpack-post (disassem-html-page html-page))
+    (declare (ignore ts))
+    (let ((pst (get-blog-post-by-timestamp ts-id)))
+      (unless pst  (recreate-post ts-id type header intro body)))))
+
+(defun import-repo(repo-path)
+  (let ((lst (directory 
+	      (make-pathname :name :wild :type :wild :defaults repo-path))))
+    (dolist (f lst)
+      (let* ((fn    (namestring f))
+	     (not-index? (not (search "/index.html" fn :from-end t)))
+	     (html? (search ".html" fn :from-end t)))
+	(when (and html? not-index?) (import-blog-post fn))))))
+
+
+
+;;-------------------
+
+(defun blog-posts() 
+  (or (get-from-root "blog-posts")
+      (let ((blog-posts (make-pset)))
+	(add-to-root "blog-posts" blog-posts)
+	(blog-posts))))
+
+
 
 (defun open-blog-store() 
   (let ((blog-store (list :BDB (blog-store-location) )))
@@ -371,9 +527,7 @@
 
 
 
-(defun p-blogpost-active(blog-post)
-  (cond ((not (gc-bit   blog-post))        t) 
-	( t                           (not t))))
+
 
 (defun p-blogpost-post(blog-post)
   (cond ((not (slot-boundp blog-post 'type-bit))        t)
@@ -395,10 +549,7 @@
   (map-class #'print 'blog-post))
 
 
-(defun make-url-part(title)
-  (string-downcase 
-   (delete-if #'(lambda(x) (not (or (alphanumericp x) (char= #\- x))))
-	      (substitute #\- #\Space title))))
+
 
 (defmethod initialize-url-part  ((obj blog-post))
   (cond ((eq nil (url-part obj))
@@ -412,14 +563,6 @@
 
 (defun style-css-path()
   (concatenate 'string (namestring (get-template-pathname)) "/style.css"))
-
-;;from
-;;www.emmett.ca/~sabetts/slurp.html
-;;
-(defun slurp-stream(stream)
-  (let ((seq (make-string (file-length stream))))
-    (read-sequence seq stream)
-    seq))
 
 
 (defun style-sheet()
@@ -441,13 +584,7 @@
 	      (return obj)))
 	nil)))
 
-(defun get-blog-post-by-timestamp(ts)
-  (let ((objs (get-instances-by-value 'blog-post 'timestamp ts)))
-    (if objs
-	(dolist (obj objs)
-	  (if (p-blogpost-active obj)
-	      (return obj)))
-	nil)))
+
 
 (defun get-blog-post(url-part) 
   (let ((obj (get-live-blog-post url-part)))
@@ -623,17 +760,8 @@
   (let ((blog-posts (get-instances-by-value 'blog-post 'gc-bit t)))
     (drop-instances blog-posts)))
 
-(defun str-strip(str)
-  (string-trim '(#\Space #\Newline #\Tab #\") str))
 
 
-(defun str2type(str) 
-  (let ((s (str-strip str)))
-    (cond ((eq    (not t)   s)    (post))
-	  ((equal "post"    s)    (post))
-	  ((equal "about"   s)    (about))
-	  ((equal "sidebar" s)    (sidebar))
-	  ( t                     (post)))))
 
 (defun create-empty-blog-post(tmpl type-str)
   (let* ((bp (create-blog-post-template (str2type type-str)))
@@ -653,18 +781,49 @@
 						  (hunchentoot:query-string)))
 	((eq (hunchentoot:request-method) :POST) (save-blog-post))))
 
+(defun simple-template(p) 
+  (with-open-file (stream p :direction :input)
+    (slurp-stream stream)))
+
+(defun generate-import-page()
+  (with-output-to-string (stream)
+    (let ((html-template:*string-modifier* #'identity))
+      (html-template:fill-and-print-template
+       (template-path "import.tmpl")
+       (list :style-sheet (style-sheet)
+	     :blog-title (blog-title)
+	     :repo-name (infer-repo-name)
+	     :remote-repo (get-remote-repo)
+	     :repo-pathname  (get-repo-pathname))
+       :stream stream))))
+
+(defun do-import (file-path)
+  (import-repo (directory-namestring file-path))
+  (hunchentoot:redirect "/" ))
+
+(defun import-remote ()
+  (format nil "this is a test : ~A" (hunchentoot:post-parameters) ) 
+)
+
+(defun import-local()
+  ( do-import (hunchentoot:post-parameter "repo-path")))
+
+
+(defun import-repo-page()
+  (cond ((eq (hunchentoot:request-method) :GET)  (generate-import-page))
+	((eq (hunchentoot:request-method) :POST) ( do-import (hunchentoot:post-parameter "file")))))
+
 (defun discard-blog-post-page()
   (cond ((eq (hunchentoot:request-method) :GET)  (discard-blog-post))
 	((eq (hunchentoot:request-method) :POST) (discard-blog-post))))
 
 
-
-(defun save-new-blog-post()
-  (let* ((title (hunchentoot:post-parameter "title"))
-	 (intro (hunchentoot:post-parameter "intro"))
-	 (body  (hunchentoot:post-parameter "body"))
-	 (blog-post (create-blog-post title intro body)))
-    (redirect-to-edit-page blog-post)))
+;;(defun save-new-blog-post()
+;;  (let* ((title (hunchentoot:post-parameter "title"))
+;;	 (intro (hunchentoot:post-parameter "intro"))
+;;	 (body  (hunchentoot:post-parameter "body"))
+;;	 (blog-post (create-blog-post title intro body)))
+;;    (redirect-to-edit-page blog-post)))
 
 (defun undo-discards() 
   (undo-all-discards)
@@ -741,6 +900,9 @@
 	    (hunchentoot:create-regex-dispatcher "^/create/save-file" (protect 'save-file))
 	    (hunchentoot:create-regex-dispatcher "^/edit/save-file"   (protect 'save-file))
 	    (hunchentoot:create-regex-dispatcher "^/discard/$"        (protect 'discard-blog-post-page))
+	    (hunchentoot:create-regex-dispatcher "^/import-repo/$"    (protect 'import-repo-page))
+	    (hunchentoot:create-regex-dispatcher "^/import-local/$"   (protect 'import-local))
+	    (hunchentoot:create-regex-dispatcher "^/import-remote/$"   (protect 'import-remote))
 	    (hunchentoot:create-regex-dispatcher "^/publish/$"        (protect 'publish-pages))
 	    (hunchentoot:create-regex-dispatcher "^/static-pages/$"   (protect 'generate-static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/undo-discards/$"  (protect 'undo-discards))
@@ -755,114 +917,6 @@
   (hunchentoot:stop-server *bliky-server*)
   (setf *bliky-server* nil)
   (close-store))
-
-;;;---------------------------------------------------
-
-(defun disassem-html-page(page)
-  (let ((links nil))    
-    (labels ((get-page(path) 
-	       (with-open-file (stream path  :direction :input)
-		 (slurp-stream stream)))
-	     (link-cb (element) 
-	       (labels ((is-div(lst)
-			  (cond ((consp lst) (and (equal :DIV (car lst)) (eq :ID (cadr lst))))
-				( t (not t))))
-			(get-div-tag(lst)
-			  (if (is-div lst)
-			      (car (cdr (cdr lst)))
-			      nil))
-			(describe-tag(tag)
-			  ;;(format t "in describe-tag ~A~%" tag)
-			  (cond ((equal tag "post-timestamp-id") tag)
-				((equal tag "post-body")         tag)
-				((equal tag "post-intro")        tag)
-				((equal tag "post-header")       tag) 
-				((equal tag "post-type")         tag) 
-				((equal tag "post-timestamp")    tag)
-				( t                            (not t))))
-			(unpack(el)
-			  el))
-		 (let ((tag  (describe-tag (get-div-tag (car element)))))
-		   (if tag 
-		       (push (list tag (unpack (cdr element))) links))))))
-      (let ((cb (cons (cons :DIV #'link-cb ) nil)))
-	(html-parse:parse-html (get-page page) :callbacks cb )
-	links))))
-
-(defun unpack (str up)
-  (labels ((find-piece(str lst &optional (accum nil))
-	     (cond ((equal str (car (car lst))) (push (cadr (car lst)) accum))
-		   ((eq lst nil) accum)
-		   (t            (find-piece str (cdr lst) accum)))))
-    (let ((piece (find-piece str up)))
-      (labels ((up-ts(lst) 
-		 (str-strip (cadr (caar lst))))
-	     ;;;
-	       (rm-wrapper-tags(seq)
-		 (let ((slen (length "<BODY>"  )) 
-		     (nlen (length "</BODY>" )))
-		   (subseq seq slen (- (length seq) nlen ))))
-	     ;;;
-	       (to-wrapped-html(lst)
-		 (let ((s (cons :body (car lst))))
-		   (with-output-to-string (stream)
-		     (net.html.generator:html-print s stream))))
-	     ;;;
-	       (to-html(lst)
-		 (str-strip (rm-wrapper-tags (to-wrapped-html lst)))))
-	(cond ((equal "post-timestamp-id"  str ) (up-ts   piece))
-	      ((equal "post-timestamp"     str ) (up-ts   piece))
-	      ((equal "post-header"        str ) (up-ts   piece))
-	      ((equal "post-type"          str ) (up-ts   piece))
-	      ((equal "post-intro"         str ) (to-html piece))
-	      ((equal "post-body"          str ) (to-html piece))
-	      (t nil))))))
-
-
-(defun unpack-post(p)
-  (let ((ts-id  (parse-integer (unpack "post-timestamp-id" p)))
-	(ts                    (unpack "post-timestamp" p))
-	(header                (unpack "post-header" p))
-	(intro                 (unpack "post-intro" p))
-	(body                  (unpack "post-body" p))
-	(type   (str2type      (unpack "post-type" p))))
-    (values ts-id ts type header intro body)))
-
-(defun mv-about()
-  (let ((lst (get-instances-by-value 'blog-post 'type-bit (about)))
-	(seed (random (floor (/ (get-universal-time) 100000000)))))
-    (dolist (obj lst)
-      (setf (type-bit obj) (sidebar))
-      (setf (title obj) (format nil "About-~A-~A" (get-universal-time) seed))
-      (setf (url-part obj) (make-url-part (title obj)))
-      (setf (gc-bit   obj) t))))
-
-(defun recreate-post(ts-id type header intro body)
-  ;; the about post is always generated when it's not found
-  ;; move the on found to the sidebar, so no info is lost..
-  (when (equal type (about) ) (mv-about))
-  (let ((post (create-blog-post header intro body type)))
-    (setf (timestamp post) ts-id)
-    post))
-      
-
-(defun import-blog-post(html-page)
-  (multiple-value-bind
-	(ts-id ts type header intro body)
-      (unpack-post (disassem-html-page html-page))
-    (declare (ignore ts))
-    (let ((pst (get-blog-post-by-timestamp ts-id)))
-      (unless pst  (recreate-post ts-id type header intro body)))))
-
-(defun import-repo(repo-path)
-  (let ((lst (directory 
-	      (make-pathname :name :wild :type :wild :defaults repo-path))))
-    (dolist (f lst)
-      (let* ((fn    (namestring f))
-	     (not-index? (not (search "/index.html" fn :from-end t)))
-	     (html? (search ".html" fn :from-end t)))
-	(when (and html? not-index?) (import-blog-post fn))))))
-
 
 
 ;;tests
