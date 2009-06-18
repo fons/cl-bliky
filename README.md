@@ -1,12 +1,12 @@
 # CL-BLIKY
-
+<title>
 ## Description
 
 cl-bliky is a very simple blogging engine written in lisp.
 
 It's based on a [tutorial](http://roeim.net/vetle/docs/cl-webapp-intro/) 
 written by [Vetle Roeim](http://roeim.net/vetle/). 
-
+<split>
 Posts are written, or uploaded using a web browser.
 The posts are inter-linked static html pages.
 The engine is configured to push the pages to a [github pages](http://pages.github.com) repo.

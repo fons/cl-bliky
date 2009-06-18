@@ -1,5 +1,7 @@
 (asdf:operate 'asdf:load-op :cl-html-parse)
 (asdf:operate 'asdf:load-op :htmlgen)
+(asdf:operate 'asdf:load-op :cl-markdown)
+
 (in-package :cl-user)
 (defpackage :blog-cl)
 (require :hunchentoot)
@@ -12,14 +14,15 @@
 (defconstant TIMEZONE     '("1" "2" "3" "4" "5" "Est" "6") )
 (defconstant DEFAULT-PORT 8050)
 (defconstant DEFAULT-REMOTE-REPO-HOST "github.com")
-;;(eval-when (:compile-toplevel :load-toplevel)
-;;  (defconstant USRMODE
-;;    (logior sb-posix:s-irusr sb-posix:s-ixusr)))
 
 (defconstant USRMODE (logior sb-posix:s-irusr sb-posix:s-ixusr sb-posix:s-iwusr))
 
 (defvar *blog-store-location* (not t))
 (defvar *bliky-server*        (not t))
+
+;;format classes
+(defmacro html() `'html)
+(defmacro md() `'md)
 
 ;;blog classes
 (defmacro post()      `'post) 
@@ -73,6 +76,10 @@
 	  ((equal "sidebar" s)    (sidebar))
 	  ( t                     (post)))))
 
+(defun render-md(s)
+  (with-output-to-string (stream)
+    (markdown:markdown s :stream stream :format :html)))
+
 (defpclass blog-post ()
   ((title :initarg :title
 		   :accessor title)
@@ -80,24 +87,27 @@
 		   :accessor intro)
    (body  :initarg  :body
 		    :accessor body)
-   (timestamp :initarg  :timestamp
-	      :accessor timestamp
-	      :initform (get-universal-time)
-	      :index t)
-   (gc-bit    :accessor gc-bit
-	      :index t
-              :initform (not t))
-   (type-bit  :initarg :type-bit
-              :accessor type-bit
-	      :index t)
-   (url-part  :initarg :url-part
-	      :accessor url-part
-	      :initform nil
-	      :index t)))
+   (timestamp  :initarg  :timestamp
+	       :accessor timestamp
+	       :initform (get-universal-time)
+	       :index t)
+   (gc-bit     :accessor gc-bit
+	       :index t
+               :initform (not t))
+   (fmt-bit    :initarg :fmt-bit
+               :accessor fmt-bit
+	       :index t)
+   (type-bit   :initarg :type-bit
+               :accessor type-bit
+	       :index t)
+   (url-part   :initarg :url-part
+	       :accessor url-part
+	       :initform nil
+	       :index t)))
 
 (defmethod print-object ((u blog-post) stream)
   "specialize print object blog post"
-  (format stream "~&blog-post : [title = ~A] [url-part = ~A][time=~A][gc=~A]~%[type=~A]~%[~A]~%[~A]~% "
+  (format stream "~&blog-post : [title = ~A] [url-part = ~A][time=~A][gc=~A]~%[type=~A][fmt=~A]~%[~A]~%[~A]~% "
 	  (if (slot-boundp u 'title) 
 	      (title u) 
 	    "(blog-post not set)")
@@ -113,6 +123,9 @@
 	  (if (slot-boundp u 'type-bit)
 	      (type-bit u)
 	    "(type bit not set)")
+	  (if (slot-boundp u 'fmt-bit)
+	      (fmt-bit u)
+	    "(format bit not set)")
 	  (if (slot-boundp u 'intro)
 	      (intro u)
 	    "(intro not set)")
@@ -142,7 +155,6 @@
 (defun get-bliky-setting(k)
   (get-value k (get-settings)))
 
-
 (defun set-bliky-port(port)
   (set-bliky-setting 'bliky-port port))
 
@@ -170,6 +182,16 @@
 	val
 	(set-contact-info "contact info not set"))))
 
+(defun set-google-analytics(co)
+  (set-bliky-setting 'google-analytics co))
+
+(defun get-google-analytics()
+  (let ((val (get-bliky-setting 'google-analytics)))
+    (if val
+	val
+	(set-google-analytics nil))))
+
+
 (defun set-remote-repo(repo)
   (set-bliky-setting 'remote-repo repo))
 
@@ -177,10 +199,12 @@
   (let ((val (get-bliky-setting 'remote-repo)))
     (if val
 	val
-	(set-bliky-port DEFAULT-REMOTE-REPO-HOST))))
+	(set-remote-repo DEFAULT-REMOTE-REPO-HOST))))
+
 ;;---------------path name code-----------------------------------------
 (defun create-if-missing(path)
-  (unless (probe-file path) (sb-posix:mkdir path USRMODE)))
+  (unless (probe-file path) (sb-posix:mkdir path USRMODE))
+  path)
 
 
 (defun set-bliky-pathname(path name)
@@ -205,7 +229,6 @@
 (defun set-template-pathname(p)
   (set-bliky-pathname p 'template-pathname))
   
-
 (defun get-template-pathname()
   (labels ((df-path()
 	     (let ((home (sb-posix:getenv "HOME")))
@@ -238,7 +261,6 @@
 	       (format nil "/tmp/~A.sandbox.github.com" user))))
     (get-bliky-pathname 'sandbox-pathname #'df-path)))
 
-;;-----------------------------------------------------------------------
 
 (defun set-mainstore?(v)
   (set-bliky-setting 'is_main_store v))
@@ -247,6 +269,16 @@
   (if (get-bliky-setting 'is_main_store)
       t
       (not t)))
+
+(defun set-offline?(v)
+  (set-bliky-setting 'is_off_line v))
+	 
+(defun get-offline?()
+  (if (get-bliky-setting 'is_off_line)
+      t
+      (not t)))
+
+;;-----------------------------------------------------------------------
 
 (defun blog-title()
   (get-blog-title))
@@ -259,6 +291,29 @@
   (let* ((pn (namestring (get-repo-pathname)))
 	(index (search "/" pn :from-end t :end2 (- (length pn) 1))))
     (subseq pn (+ index 1) (- (length pn) 1))))
+;;-------------------------------------------------
+(defun tracking-js-path()
+  (concatenate 'string (namestring (get-template-pathname)) "/google-analytics.js"))
+
+(defun load-tracking-js()
+  (handler-case 
+      (with-open-file (stream (tracking-js-path) :direction :input)
+	(set-google-analytics (slurp-stream stream)))
+    (error(c) 
+      (declare (ignore c))
+      nil)))
+
+;----------------------------------------
+(defun contact-js-path()
+  (concatenate 'string (namestring (get-template-pathname)) "/contact-info.js"))
+
+(defun load-contact-js()
+  (handler-case 
+      (with-open-file (stream (contact-js-path) :direction :input)
+	(set-contact-info (slurp-stream stream)))
+    (error(c) 
+      (declare (ignore c))
+      nil)))
 
 ;;-----------git-repo-managment code-----------
 (defun switch-to-repo(repo-path)
@@ -507,8 +562,6 @@
 	     (html? (search ".html" fn :from-end t)))
 	(when (and html? not-index?) (import-blog-post fn))))))
 
-
-
 ;;-------------------
 
 (defun blog-posts() 
@@ -517,16 +570,11 @@
 	(add-to-root "blog-posts" blog-posts)
 	(blog-posts))))
 
-
-
 (defun open-blog-store() 
   (let ((blog-store (list :BDB (blog-store-location) )))
     (if (null *store-controller*)  
 	(open-store  blog-store )
 	(print "store already opened"))))
-
-
-
 
 
 (defun p-blogpost-post(blog-post)
@@ -548,9 +596,6 @@
 (defun show-blogs()
   (map-class #'print 'blog-post))
 
-
-
-
 (defmethod initialize-url-part  ((obj blog-post))
   (cond ((eq nil (url-part obj))
 	 (setf (url-part obj) (make-url-part (title obj)))))) 
@@ -560,14 +605,13 @@
 	 (setf (url-part obj) (make-url-part (title obj)))))) 
 
 
-
 (defun style-css-path()
   (concatenate 'string (namestring (get-template-pathname)) "/style.css"))
-
 
 (defun style-sheet()
   (with-open-file (stream (style-css-path) :direction :input)
     (slurp-stream stream)))
+
 
 ;;needs to get all instances
 (defun discard-post-by-type(type)
@@ -583,8 +627,6 @@
 	  (if (p-blogpost-active obj)
 	      (return obj)))
 	nil)))
-
-
 
 (defun get-blog-post(url-part) 
   (let ((obj (get-live-blog-post url-part)))
@@ -602,10 +644,8 @@
   (let ((obj (get-about-post)))
     (url-part obj)))
 
-
 (defun template-path(tmpl)
   (make-pathname :directory (namestring (get-template-pathname) )  :name tmpl))
-
 
 (defun generate-error-page(trace msg)
   (handler-case
@@ -632,7 +672,7 @@
 	:type (string-downcase (type-bit blog-post))
 	:title (title blog-post)
 	:url-part (url-part blog-post)
-	:intro (intro blog-post)))
+	:intro (render-md (intro blog-post))))
 
 (defun use-edit-template(blog-post)
   (cons :edit_part (cons t (use-static-template blog-post))))
@@ -658,6 +698,7 @@
       (html-template:fill-and-print-template
        (template-path "index.tmpl")
        (list :style-sheet (style-sheet)
+	     (unless (get-offline?) :google-analytics) (unless (get-offline?) (get-google-analytics))
 	     (if create :edit_part) (if create t) 
 	     :blog-title (blog-title)
 	     :main-repo-qs     (main-repo-qs)
@@ -672,7 +713,7 @@
 (defun generate-editable-index-page()
   (generate-index-page #'use-edit-template :create t))
 
-(defun generate-blog-post-page(tmpl url-part)
+(defun generate-blog-post-page(tmpl url-part &optional (render 'identity))
     (with-output-to-string (stream)
 			   (let ((blog-post (get-live-blog-post url-part))
 				 (html-template:*string-modifier* #'identity))
@@ -686,26 +727,26 @@
 					:timestamp (fmt-timestamp (timestamp blog-post))
 					:timestamp-id (timestamp blog-post)
 					:type         (string-downcase (type-bit blog-post))
-					:intro (intro blog-post) 
-					:body (body blog-post))
+					:intro (funcall render (intro blog-post)) 
+					:body  (funcall render (body blog-post)))
 				  :stream stream)))))
 
-;;(defun generate-blog-post-page(tmpl)
-;;  (let ((up 
-;;    (generate-blog-post-page-alt up tmpl)))
 
 (defun view-blog-post-page()
-  (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string)))
+  (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string) 'render-md))
 
-
+;;
+;; Somehow we end up with a extra space at the start of the intro and body
+;; This could trigger some mark-down formatting;
+;; Hence the string is stripped of spaces etc.. 
+;;
 (defun save-blog-post() 
   (let ((blog-post (get-live-blog-post (hunchentoot:query-string))))
     (setf (title    blog-post) (hunchentoot:post-parameter "title"))
-    (setf (intro    blog-post) (hunchentoot:post-parameter "intro"))
-    (setf (body     blog-post) (hunchentoot:post-parameter "body"))
+    (setf (intro    blog-post) (str-strip (hunchentoot:post-parameter "intro")))
+    (setf (body     blog-post) (str-strip (hunchentoot:post-parameter "body")))
     (setf (url-part blog-post) (make-url-part (title blog-post)))
     (hunchentoot:redirect "/" )))
-
 
 (defun split-sequence(seq tkw kw)
   (handler-case
@@ -738,7 +779,6 @@
 	(setf (url-part blog-post) (make-url-part (title blog-post))))
       (redirect-to-edit-page blog-post))))
 
-
 (defun discard-blog-post()
   (let ((blog-posts (get-instances-by-value 'blog-post 'url-part (hunchentoot:query-string))))
     (dolist (blog-post blog-posts)
@@ -750,7 +790,6 @@
     (dolist (blog-post blog-posts)
       (setf (gc-bit blog-post) t))))
     
- 
 (defun undo-all-discards() 
   (let ((blog-posts (get-instances-by-value 'blog-post 'gc-bit t)))
     (dolist (blog-post blog-posts)
@@ -759,9 +798,6 @@
 (defun drop-all-discards() 
   (let ((blog-posts (get-instances-by-value 'blog-post 'gc-bit t)))
     (drop-instances blog-posts)))
-
-
-
 
 (defun create-empty-blog-post(tmpl type-str)
   (let* ((bp (create-blog-post-template (str2type type-str)))
@@ -817,14 +853,6 @@
   (cond ((eq (hunchentoot:request-method) :GET)  (discard-blog-post))
 	((eq (hunchentoot:request-method) :POST) (discard-blog-post))))
 
-
-;;(defun save-new-blog-post()
-;;  (let* ((title (hunchentoot:post-parameter "title"))
-;;	 (intro (hunchentoot:post-parameter "intro"))
-;;	 (body  (hunchentoot:post-parameter "body"))
-;;	 (blog-post (create-blog-post title intro body)))
-;;    (redirect-to-edit-page blog-post)))
-
 (defun undo-discards() 
   (undo-all-discards)
   (hunchentoot:redirect "/" ))
@@ -849,7 +877,7 @@
 	     (dolist (up (url-parts))
 	       (let ((fn (concatenate 'string repo-path "/" up ".html")))
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
-		   (format stream (generate-blog-post-page (template-path "post.tmpl") up)))))))
+		   (format stream (generate-blog-post-page (template-path "post.tmpl") up 'render-md)))))))
     (publish-index-page)
     (publish-other-pages)))
 
@@ -887,11 +915,10 @@
 
 
 (defun generate-static-pages()
-  (let ((repo-path (get-sandbox-pathname)))
+  (let ((repo-path (create-if-missing (get-sandbox-pathname))))
     (push-pages-to-repo (namestring repo-path))
     (get-static-page "index.html")))
   
-
 (setq hunchentoot:*dispatch-table* 
       (list (hunchentoot:create-regex-dispatcher "[.]html"            (protect 'static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/$"                (protect 'generate-editable-index-page))
@@ -919,21 +946,5 @@
   (close-store))
 
 
-;;tests
 
-(defun test-html-alt(s)
-  (with-output-to-string (stream)
-    (net.html.generator:html-stream stream (:body (:princ s)))))
-
-(defun test-html(s)
-  (with-output-to-string (stream)
-    (net.html.generator:html-print s stream)))
-
-    
-(defun up-test()
-  (disassem-html-page (format nil "~A/~A" (get-repo-pathname) "code.html")))
-
-(defun p-test()
-  (import-blog-post (format nil "~A/~A" (get-repo-pathname) "about.html")))
-
-
+	       

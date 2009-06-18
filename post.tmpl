@@ -12,20 +12,24 @@
   <body>
 
     <div id="mainClm">
-      <a href="/"><h1> <!-- tmpl_var blog-title --></h1></a>
+    <div id="blog-title">
+      <a href="/"> <h1> <!-- tmpl_var blog-title --> </h1> </a> 
       <br>
       <br>
       <br>
       <br>
+      <br>
+    </div>
+
       <div id="<!-- tmpl_var type -->">
 	<div id="post-type" style="visibility:hidden">
 	  <p>"<!-- tmpl_var type -->"</p>
 	</div>
 	<div id="post-timestamp" >
-	<p><!-- tmpl_var timestamp --> </p>
+	  <p><!-- tmpl_var timestamp --> </p>
 	</div>
 	<div id="post-header">
-	<h2> <!-- tmpl_var  title -->  </h2>
+	  <h2> <!-- tmpl_var  title -->  </h2>
 	</div>
 	<div id="post-intro">
 	  <!-- tmpl_var intro -->
@@ -37,11 +41,13 @@
 	  <p><!-- tmpl_var timestamp-id --> </p>
 	</div>
       </div>
+
+      <div id="footer">
+	<p>
+	  Powered by <a href="http://www.github.com/fons/cl-bliky"> cl-bliky </a>
+	</p>
+      </div>
       
-    <p id="footer">
-      Powered by <a href="http://www.github.com/fons/cl-bliky"> cl-bliky </a>
-    </p>
-    
     </div><!-- end of main area -->
 
   </body>
