@@ -15,7 +15,7 @@ body{
       background:#eee9e9;
       #background:#fffacd;
           
-      color:#000011;
+      #color:#000011;
       font-size : 18px;
       font-family : , 'Sans Serif',;
 
@@ -26,7 +26,7 @@ p {
     padding:0x;
     #background:#ffffff;
     background:#eee9e9;
-    color:#000011;
+    #color:#000011;
     font-size : 18px;
     font-family : , 'Sans Serif',;
     }
@@ -41,7 +41,7 @@ a{
    }
 
 a:hover{
-         color:orange;
+         text-decoration:none;
          }
 
 a:visited{
@@ -103,14 +103,17 @@ Purpose : Formats the blog title
 Comment : Seperate format for the blog title
        
 ----------------------------------------------------------------*/
+#blog-title {
+              width:68%;
+              }
+
 
 #blog-title h1{
-                margin:0px 0px 0px 0px;
-                padding:0px 60px 0px 0px;
                 color: #0000cc;
                 font:bold 250% Verdana,Sans-Serif;
                 float:right;
-                width:30%;
+                width:35%;
+                padding:20px 0px 0px 0px;
                 }
 
 
@@ -151,11 +154,11 @@ Comment : This is the sidebar to the left of the page
 ----------------------------------------------------------------*/
 
 #sideBar{
-          margin:0px 0px 0px 0px;
+          padding:250px 0px 0px 0px;
+          #margin:0px 0px 0px 0px;
           text-align:left;
           font-family : 'Sans Serif';
-          font-size : 14px;
-          #background:#ffffff;
+          font-size : 18px;
           background:#eee9e9;
           }
 
@@ -184,13 +187,31 @@ Comment : This is the sidebar to the left of the page
               color:#111111
               }
 
-#sideBar a{
-            color:#555555
-            }
+#sideBar a {
+             color:#555555
+             }
+
+#sideBar a:hover {
+                   border-bottom: solid 2px red;
+                   }
 
 #sideBar ul a{
-               color:#555555;
+               #color:#555555;
+               color:black;##FF8000;
+               list-style-type:underline;
                }
+
+#contact a {
+             color:#555555
+             }
+
+#contact a:hover {
+                   text-decoration:none;
+                   }
+
+#contact a:visited{
+                    color:#0000cc;
+                    }
 
 
 /*-------------------------------------------------------------------------
@@ -204,6 +225,20 @@ the 'general' settings.
 /* h2 is also used for the blog post title...
    h6 is special; it's used to format the 'continue reading ..' link    
 */
+
+#post { 
+        margin:  1em 1em 1em 1em;
+        padding: 1em 1em 1em 1em;
+        border: 0.1em solid #FF8000;
+        background:#F5F5F5;
+        #background:#FFFFE0;
+        #background:#F2F2F2;
+        #background:#FAFAD2;
+        }
+
+#post p { 
+          background:#F5F5F5;
+        }
 
 
 /* h2 is also used for the blog post title...*/
@@ -249,7 +284,7 @@ Comment : Each blog post has a time stamp in a specific div.
                     border-bottom-width : 4px;
                     color : #cc0000;
                     font-family : , 'Sans Serif',;
-                    font-size : 10px;
+                    font-size : 12px;
                     height : 4px;
 
                     }
@@ -270,6 +305,10 @@ Comment : Basically sets up a footer pointing to the bliky location
            }
 #footer a { color:#222222; }
 
+#footer a:hover {
+                  border-bottom: solid 2px red;
+                  }
+
 
 /* ---------------------------------------------------------------------
 Sheet       : post-edit.tmpl
@@ -278,13 +317,22 @@ Comment     : These are the styles used when editing
 a blog post
 
 -----------------------------------------------------------------------*/
+#edit-page{
+            float:left;
+            padding:13px 50px 10px 5%;
+            width:80%;
+            }
+
+
 #edit-header {                
                margin:0px 0px 0px 0px;
+               font-size:240%;
                }
 
 #edit-header h1 { 
                   margin:0px 0px 0px 0px;
-
+                  color:salmon; 
+                  text-align: center;
                   }
 
 #intro-buttons {  
@@ -350,13 +398,6 @@ a blog post
             #border-top:solid 2px #FFEBCD;
             #background:#FFEBCD;color:#8B4513;
             }
-
-#post { 
-        margin:  1em 1em 1em 1em;
-        padding: 1em 1em 1em 1em;
-        border: 0.1em solid #FF8000;
-        background:#F5F5F5
-        }
 
 strike{color:#999999;}
 .bug{padding:5px;border:0px;}

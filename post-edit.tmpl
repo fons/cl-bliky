@@ -8,18 +8,11 @@
     </style>
   </head>  
   <body>
-    <div id="mainClm">
-      <div id="edit-header">
-	<div id="blog-title">
-	  <a href="/"> <h1> Edit blog post </h1> </a>
-	  <br>
-	  <br>
-	  <br>
-	  <br>
-	  <br>
-	</div>
+    <div id="edit-header">
+      <a href="/"> <h1> Edit blog post </h1> </a>
+    </div>
 
-      </div>
+    <div id="edit-page">
       <div id="intro-buttons">
 	<form enctype="multipart/form-data" method="post" action="save-file?<!-- tmpl_var url_part -->">
 	  <input type="file"   size="40"   name="file" value="select file" >
@@ -46,6 +39,6 @@
     </div>
       </form>
       <!-- end of the main form -->
-    </div>
+</div>
   </body>
 </html>

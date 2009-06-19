@@ -1,5 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-	  "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
 
@@ -11,17 +10,10 @@
 
 
 <body>
+  <div id="blog-title">
+    <h1> <!-- tmpl_var blog-title --> </h1>
+  </div>
   <div id="mainClm">
-    <div id="blog-title">
-      <h1> <!-- tmpl_var blog-title --> </h1>
-      <br>
-      <br>
-      <br>
-      <br>
-      <br>
-      <br>
-    </div>
-
     <!-- tmpl_if edit_part -->
      <hr>
      <a href="/create/?post"> [create new post] </a>
@@ -29,7 +21,7 @@
      <a href="/undo-discards/?"> [restore discarded posts] </a>
      <a href="/drop-discards/?"> [remove discarded posts] </a>
      <a href="/import-repo/?"> [import repo] </a>
-     <a href="/static-pages/?<!-- tmpl_var sandbox-repo-qs -->" > [review] </a>
+     <a href="/static-pages/?<!-- tmpl_var sandbox-repo-qs -->" > [preview] </a>
      <a href="/publish/?<!-- tmpl_var main-repo-qs -->" > [publish] </a>
      <hr>
    <!-- /tmpl_if -->  
@@ -61,7 +53,6 @@
       <a href="/discard/?<!--tmpl_var url-part -->"> [discard] </a>
     </div>
     <!-- /tmpl_if -->
-    
   </div>
   <!-- /tmpl_loop -->
   <div id="footer">
@@ -77,16 +68,6 @@
   <!-- start of the sidebar -->
   
   <div id="sideBar">
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
     <div id="about">
       <!-- tmpl_if edit_part -->
       <a href="/view/?<!--tmpl_var about -->"> <h2> About </h2></a>

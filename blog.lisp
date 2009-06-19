@@ -293,7 +293,7 @@
     (subseq pn (+ index 1) (- (length pn) 1))))
 ;;-------------------------------------------------
 (defun tracking-js-path()
-  (concatenate 'string (namestring (get-template-pathname)) "/google-analytics.js"))
+  (concatenate 'string (namestring (get-template-pathname)) "/js/google-analytics.js"))
 
 (defun load-tracking-js()
   (handler-case 
@@ -305,7 +305,7 @@
 
 ;----------------------------------------
 (defun contact-js-path()
-  (concatenate 'string (namestring (get-template-pathname)) "/contact-info.js"))
+  (concatenate 'string (namestring (get-template-pathname)) "/js/contact-info.js"))
 
 (defun load-contact-js()
   (handler-case 
@@ -703,7 +703,7 @@
 	     :blog-title (blog-title)
 	     :main-repo-qs     (main-repo-qs)
 	     :sandbox-repo-qs  (sandbox-repo-qs)
-	     :contact-info     (contact-info)
+	     (unless (get-offline?) :contact-info)  (unless (get-offline?) (contact-info))
 	     :about            (about-page)
 	     :sidebars         (collect-sidebars tlf)
 	     :blog-posts       (collect-posts    tlf))
