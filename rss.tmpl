@@ -1,0 +1,19 @@
+<?xml version = "1.0">
+<rss version="2.0">
+<channel>
+  <title><!-- tmpl_var blog-title --> </title>
+  <link> <!-- tmpl_var blog-url --> </link>
+  <description> <!-- tmpl_var blog-description --> </description>
+  <pubDate> <!-- tmpl_var rss-generation-date --> </pubDate>
+
+  <!-- tmpl_loop blog-posts -->
+  <item>
+    <title> <!-- tmpl_var title --> </title>
+    <link> "<--tmpl_var rss-blog-url-->/<!--tmpl_var url-part -->.html" </link>
+    <description> <!-- tmpl_var intro --> </description> 
+    <pubDate> <!-- tmpl_var timestamp --> </pubDate>
+    <guid> "<--tmpl_var blog-url-->/<!--tmpl_var url-part -->.html" </guid>      
+  </item>
+  <!-- /tmpl_loop -->
+</channel>
+</rss>

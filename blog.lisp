@@ -666,6 +666,13 @@
       (error(c)
 	(generate-error-page c "an error occured when generating static pages")))))
 
+;;I probably don't need this a second time :blog-url (blog-url)
+(defun rss-feed-format(blog-post)
+  (list :timestamp (fmt-timestamp (timestamp blog-post))
+	:title (title blog-post)
+	:url-part (url-part blog-post)
+	:intro (render-md (intro blog-post))))
+
 (defun use-static-template(blog-post)
   (list :timestamp (fmt-timestamp (timestamp blog-post))
 	:timestamp-id (timestamp blog-post)
@@ -691,7 +698,27 @@
 						 'timestamp nil nil)
      if (p-sidebar blog-post )
      collect (cons :body (cons (body blog-post) (funcall tlf blog-post)))))
-  
+
+;;TODO
+(defun blog-url() 
+ (infer-repo-name)  )
+
+;;TODO
+(defun blog-description() 
+  "about programming")
+
+(defun generate-rss-page()
+  (with-output-to-string (stream)
+    (let ((html-template:*string-modifier* #'identity))
+      (html-template:fill-and-print-template
+       (template-path "rss.tmpl")
+       (list :blog-title (blog-title)
+	     :blog-url (blog-url)
+	     :blog-description (blog-description)
+	     :rss-generation-date (fmt-timestamp (get-universal-time)) 
+	     :blog-posts          (collect-posts    #'rss-feed-format))
+	     :stream stream))))
+
 (defun generate-index-page(tlf &key create)
   (with-output-to-string (stream)
     (let ((html-template:*string-modifier* #'identity))
@@ -866,6 +893,10 @@
 	     (let ((fn (concatenate 'string repo-path "/index.html")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
 		 (format stream (generate-index-page #'use-static-template)))))
+	   (publish-rss-page()
+	     (let ((fn (concatenate 'string repo-path "/feed.xml")))
+	       (with-open-file (stream fn :direction :output :if-exists :supersede)
+		 (format stream (generate-rss-page)))))
 	   (url-parts()
 	     (let ((lst))
 	       (labels ((up(u) 
@@ -879,6 +910,7 @@
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
 		   (format stream (generate-blog-post-page (template-path "post.tmpl") up 'render-md)))))))
     (publish-index-page)
+    (publish-rss-page)
     (publish-other-pages)))
 
 
@@ -929,7 +961,7 @@
 	    (hunchentoot:create-regex-dispatcher "^/discard/$"        (protect 'discard-blog-post-page))
 	    (hunchentoot:create-regex-dispatcher "^/import-repo/$"    (protect 'import-repo-page))
 	    (hunchentoot:create-regex-dispatcher "^/import-local/$"   (protect 'import-local))
-	    (hunchentoot:create-regex-dispatcher "^/import-remote/$"   (protect 'import-remote))
+	    (hunchentoot:create-regex-dispatcher "^/import-remote/$"  (protect 'import-remote))
 	    (hunchentoot:create-regex-dispatcher "^/publish/$"        (protect 'publish-pages))
 	    (hunchentoot:create-regex-dispatcher "^/static-pages/$"   (protect 'generate-static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/undo-discards/$"  (protect 'undo-discards))
