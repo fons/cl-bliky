@@ -10,7 +10,7 @@
 (use-package :elephant)
 
 (defconstant MONTHS     '("xx" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
-(defconstant DAYS         '("Mon" "Tues" "Wed" "Thu" "Fri" "Sat" "Sun"))
+(defconstant DAYS         '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
 (defconstant TIMEZONE     '("1" "2" "3" "4" "5" "Est" "6") )
 (defconstant DEFAULT-PORT 8050)
 (defconstant DEFAULT-REMOTE-REPO-HOST "github.com")
@@ -54,19 +54,20 @@
 
 
 (defun fmt-timestamp(st)
+  ;; format rfc-822 style
   (multiple-value-bind 
 	(second minute hour day month year dow dst-p tz)
       (decode-universal-time st)
     (declare (ignore dst-p))
-    (format nil "~&~A ~A ~A ~A:~A:~A ~A ~A"
+    (format nil "~&~A, ~2,'0D ~A ~4D ~2,'0D:~2,'0D:~2,'0D ~A"
 	    (nth dow DAYS)
-	    (nth month MONTHS) 
 	    day
+	    (nth month MONTHS) 
+	    year
 	    hour 
 	    minute 
 	    second
-	    (nth tz TIMEZONE)
-	    year)))
+	    (string-upcase (nth tz TIMEZONE)))))
 
 (defun str2type(str) 
   (let ((s (str-strip str)))
@@ -383,7 +384,8 @@
     (run-git msg)))
 
 (defun git-add-all-posts()
-  (run-git "add *.html"))
+  (run-git "add *.html")
+  (run-git "add *.xml"))
 
 (defun git-publish-branch()
   (run-git "checkout -b publish"))
@@ -485,7 +487,7 @@
 		   (if tag 
 		       (push (list tag (unpack (cdr element))) links))))))
       (let ((cb (cons (cons :DIV #'link-cb ) nil)))
-	(html-parse:parse-html (get-page page) :callbacks cb )
+	(html-parse:parse-html (get-page page) :callbacks cb)
 	links))))
 
 (defun unpack (str up)
@@ -666,12 +668,12 @@
       (error(c)
 	(generate-error-page c "an error occured when generating static pages")))))
 
-;;I probably don't need this a second time :blog-url (blog-url)
+
 (defun rss-feed-format(blog-post)
   (list :timestamp (fmt-timestamp (timestamp blog-post))
 	:title (title blog-post)
 	:url-part (url-part blog-post)
-	:intro (render-md (intro blog-post))))
+	:intro (intro blog-post)))
 
 (defun use-static-template(blog-post)
   (list :timestamp (fmt-timestamp (timestamp blog-post))
@@ -701,7 +703,7 @@
 
 ;;TODO
 (defun blog-url() 
- (infer-repo-name)  )
+  (format nil "http://~A/" (infer-repo-name)))
 
 ;;TODO
 (defun blog-description() 
@@ -953,6 +955,7 @@
   
 (setq hunchentoot:*dispatch-table* 
       (list (hunchentoot:create-regex-dispatcher "[.]html"            (protect 'static-pages))
+	    (hunchentoot:create-regex-dispatcher "[.]xml"            (protect 'static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/$"                (protect 'generate-editable-index-page))
 	    (hunchentoot:create-regex-dispatcher "^/view/$"           (protect 'view-blog-post-page))
 	    (hunchentoot:create-regex-dispatcher "^/edit/$"           (protect 'edit-blog-post-page))
@@ -963,6 +966,7 @@
 	    (hunchentoot:create-regex-dispatcher "^/import-local/$"   (protect 'import-local))
 	    (hunchentoot:create-regex-dispatcher "^/import-remote/$"  (protect 'import-remote))
 	    (hunchentoot:create-regex-dispatcher "^/publish/$"        (protect 'publish-pages))
+	    (hunchentoot:create-regex-dispatcher "^/rss-feed/$"       (protect 'generate-rss-page))
 	    (hunchentoot:create-regex-dispatcher "^/static-pages/$"   (protect 'generate-static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/undo-discards/$"  (protect 'undo-discards))
 	    (hunchentoot:create-regex-dispatcher "^/drop-discards/$"  (protect 'drop-discards))
@@ -979,4 +983,8 @@
 
 
 
-	       
+;;-------------------------------------------
+
+;;(IMPORT-BLOG-POST "/home/alfons/fons.github.com/blog-post-with-code-examples.html")	       
+
+;;(fmt-timestamp (get-universal-time))

@@ -83,8 +83,15 @@
       <!-- tmpl_var contact-info -->
     </div>
     <div id="rss-feed">
-      <a href="http://kontactr.com/user/prognotes">
-	<img src="/rss_pill_blue_32.png" border="0" width="90px" height="16px" /></a>
+      <!-- tmpl_if edit_part -->
+      <a href="/rss-feed/?"> 
+	<!-- tmpl_else -->
+	<a href="/feed.xml"> 
+	  <!-- /tmpl_if -->
+	 <img src="http://github.com/fons/cl-bliky/raw/3c0b8599e6da878fb6870c71955a18915f2f1073/rss_pill_blue_32.png" 
+	       border="0"   />
+	  
+	</a>
     </div>
     <div id="side-bars">
       

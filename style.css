@@ -14,11 +14,9 @@ body{
       #background:#ffffff;
       background:#eee9e9;
       #background:#fffacd;
-          
       #color:#000011;
-      font-size : 18px;
-      font-family : , 'Sans Serif',;
-
+      font-size : 12px;
+      font:normal 100% Sans-Serif;
       }
 
 p {
@@ -27,8 +25,10 @@ p {
     #background:#ffffff;
     background:#eee9e9;
     #color:#000011;
-    font-size : 18px;
-    font-family : , 'Sans Serif',;
+    font-size : 12px;
+    font:normal 100% Sans-Serif;
+
+
     }
 
 a{
@@ -50,12 +50,9 @@ a:visited{
 
 h1,h2,h3,h4,h5,h6{
                    color:#595959;
-                   font-family : , 'Sans Serif',;
+                   font:bold 100% Sans-Serif;
                    padding:0px 0px 0px 0px;
                    margin:0px 0px 5px 0px;
-                   #border-bottom:dotted 1px #cccccc;
-                   font-size : 100%;
-                   font-weight : bold;
                    width:100%;
                    text-align:left;
                    }
@@ -65,11 +62,11 @@ h1 {
 
 
 h2 {
-     font-size:140%;
+     font-size:160%;
      }
 
 h3 {
-     font-size:120%;
+     font-size:110%;
      }
 
 
@@ -110,7 +107,7 @@ Comment : Seperate format for the blog title
 
 #blog-title h1{
                 color: #0000cc;
-                font:bold 250% Verdana,Sans-Serif;
+                font:bold 250% Sans-Serif;
                 float:right;
                 width:35%;
                 padding:20px 0px 0px 0px;
@@ -126,7 +123,7 @@ Comment :
 
 #import-header h1 {
                     color: #0000cc;
-                    font:bold Verdana,Sans-Serif;
+                    font:bold Sans-Serif;
                     width:100%;
                     padding:15px 0px 0px 0px;
                     font-size: 240%;
@@ -155,20 +152,19 @@ Comment : This is the sidebar to the left of the page
 
 #sideBar{
           padding:250px 0px 0px 0px;
-          #margin:0px 0px 0px 0px;
           text-align:left;
-          font-family : 'Sans Serif';
-          font-size : 18px;
           background:#eee9e9;
+          font-size : 12px;
+          font:normal 100% Sans-Serif;
+
           }
 
 #sideBar p {
              margin:0px 0px 0px 0px;
              text-align:left;
-             font-family : 'Sans Serif';
-             font-size : 14px;
-             #background:#ffffff;
              background:#eee9e9;
+             font-size : 12px;
+             font:normal 100% Sans-Serif;
              }
 
 #sideBar h2 {
@@ -231,9 +227,6 @@ the 'general' settings.
         padding: 1em 1em 1em 1em;
         border: 0.1em solid #FF8000;
         background:#F5F5F5;
-        #background:#FFFFE0;
-        #background:#F2F2F2;
-        #background:#FAFAD2;
         }
 
 #post p { 
@@ -245,7 +238,7 @@ the 'general' settings.
 #post h2 {
            border-bottom:solid 1px #000000;
            color: #0000cc;
-           font:bold 140% Verdana,Sans-Serif;
+           font:bold 160% Sans-Serif;
            }
 
 
@@ -260,14 +253,14 @@ the 'general' settings.
 #post-body h2 {
                 color:#595959;
                 border-bottom:dotted 0px #cccccc;
-                font-size:110%;
+                font-size:140%;
                 }
 
 /* h6 is special; it's used to format the 'continue reading ..' link */
 #post h6 {
           margin:4px 0px 0px 0px;
           color:#0000cc;
-          font-family : 'Sans Serif';
+          #font-family : 'Sans Serif';
           font-size   : 14px;
           font-weight : bold;
           }
@@ -283,7 +276,7 @@ Comment : Each blog post has a time stamp in a specific div.
                     margin:0px 0px 18px 0px;
                     border-bottom-width : 4px;
                     color : #cc0000;
-                    font-family : , 'Sans Serif',;
+                    #font-family : , 'Sans Serif',;
                     font-size : 12px;
                     height : 4px;
 
@@ -297,7 +290,7 @@ Comment : Basically sets up a footer pointing to the bliky location
 
 ----------------------------------------------------------------*/
 #footer p { 
-            font-family : , 'Sans Serif',;           
+            #font-family : , 'Sans Serif',;           
             font-size:.75em;
             margin-top: 3em;
             text-align: center;
