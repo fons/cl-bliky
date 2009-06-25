@@ -19,19 +19,23 @@ from a server like apache or nginx as well.
 cl-bliky depends on the following packages :
 
 
-* [sbcl] (----)
+* [sbcl](http://sbcl.sourceforge.net/)
 * [elephant](http://common-lisp.net/project/elephant/) 
   with [berkley db](http://www.oracle.com/technology/products/berkeley-db/index.html).
 * [hunchentoot](http://www.weitz.de/hunchentoot/)
 * [html-template](http://www.weitz.de/html-template/)
-* [htmlgen] (------)
-* [cl-html-parse] (-----------------------)
-* [cl-markdown] (http://.....................)
+* [htmlgen](http://www.cliki.net/htmlgen)
+* [cl-html-parse](http://www.cliki.net/CL-HTML-Parse)
+* [cl-markdown](http://common-lisp.net/project/cl-markdown/)
 
-#### rss_pill_blue_32.png
 
-* source :[Zeus Studios](http://www.zeusboxstudio.com/blog/feedicons-2)
-* License : [Creative Commons Attribution-No Derivative Works](http://creativecommons.org/licenses/by-nd/3.0/</string>)
 
 ## initial startup
 
+
+
+## Acknowledgements
+*rss_pill_blue_32.png
+
+	- source :[Zeus Studios](http://www.zeusboxstudio.com/blog/feedicons-2)
+	- License : [Creative Commons Attribution-No Derivative Works](http://creativecommons.org/licenses/by-nd/3.0/</string>)
