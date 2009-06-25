@@ -15,7 +15,7 @@ The engine is easily configured so that the generated page can be served directl
 from a server like apache or nginx as well.
 
 
-## dependencies
+## Dependencies
 cl-bliky depends on the following packages :
 
 
@@ -29,8 +29,7 @@ cl-bliky depends on the following packages :
 * [cl-markdown](http://common-lisp.net/project/cl-markdown/)
 
 
-
-## initial startup
+## Initial Startup
 
 
 

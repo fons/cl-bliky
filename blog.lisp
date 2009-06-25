@@ -43,7 +43,7 @@
 (setf (hunchentoot:log-file) "/tmp/error.file")
 
 (defun str-strip(str)
-  (string-trim '(#\Space #\Newline #\Tab #\") str))
+  (string-trim '(#\Return #\Space #\Newline #\Tab #\") str))
 
 
 ;;from
@@ -805,6 +805,8 @@
     (setf (body     blog-post) (str-strip (hunchentoot:post-parameter "body")))
     (setf (url-part blog-post) (make-url-part (title blog-post)))
     (hunchentoot:redirect "/" )))
+
+
 
 (defun split-sequence(seq tkw kw)
   (handler-case
