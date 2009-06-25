@@ -15,6 +15,8 @@
 (defconstant DEFAULT-PORT 8050)
 (defconstant DEFAULT-REMOTE-REPO-HOST "github.com")
 
+(defconstant IMPORT-FAILED-MSG "I was unable to convert this post back to html during the import")
+
 (defconstant USRMODE (logior sb-posix:s-irusr sb-posix:s-ixusr sb-posix:s-iwusr))
 
 (defvar *blog-store-location* (not t))
@@ -135,7 +137,8 @@
 	    "(body not set)")))
 
 ;;--------------settings-----------------
-
+;;
+;;
 (defun blog-store-location()
   (if *blog-store-location*
       *blog-store-location*
@@ -192,6 +195,14 @@
 	val
 	(set-google-analytics nil))))
 
+(defun set-rss-link(co)
+  (set-bliky-setting 'rss-link co))
+
+(defun get-rss-link()
+  (let ((val (get-bliky-setting 'rss-link)))
+    (if val
+	val
+	(set-rss-link nil))))
 
 (defun set-remote-repo(repo)
   (set-bliky-setting 'remote-repo repo))
@@ -279,6 +290,8 @@
       t
       (not t)))
 
+;;---------------end of settings ---------------------------------------
+
 ;;-----------------------------------------------------------------------
 
 (defun blog-title()
@@ -292,7 +305,8 @@
   (let* ((pn (namestring (get-repo-pathname)))
 	(index (search "/" pn :from-end t :end2 (- (length pn) 1))))
     (subseq pn (+ index 1) (- (length pn) 1))))
-;;-------------------------------------------------
+
+;;----------------------------
 (defun tracking-js-path()
   (concatenate 'string (namestring (get-template-pathname)) "/js/google-analytics.js"))
 
@@ -304,7 +318,7 @@
       (declare (ignore c))
       nil)))
 
-;----------------------------------------
+;----------------------------
 (defun contact-js-path()
   (concatenate 'string (namestring (get-template-pathname)) "/js/contact-info.js"))
 
@@ -315,8 +329,20 @@
     (error(c) 
       (declare (ignore c))
       nil)))
+;----------------------------
+(defun rss-js-path()
+  (concatenate 'string (namestring (get-template-pathname)) "/js/rss-tag.js"))
 
-;;-----------git-repo-managment code-----------
+(defun load-rss-js()
+  (handler-case 
+      (with-open-file (stream (rss-js-path) :direction :input)
+	(set-rss-link (slurp-stream stream)))
+    (error(c) 
+      (declare (ignore c))
+      nil)))
+;;-----------------------------------------------------------------------------------
+;;-----------git-repo-managment code-------------------------------------------------
+;;----------------------------------------------------------------------------------
 (defun switch-to-repo(repo-path)
   (sb-posix:chdir repo-path))
 
@@ -353,7 +379,7 @@
 		     (t            nil))))
       (let* ((data (process-output (sb-ext:run-program cmd (set-args args)
 						       :input :stream :output :stream :search t))))
-	     
+	
 	(do ((line (read-line data nil 'eof)
 		   (read-line data nil 'eof)))
 	    ((eql line 'eof))
@@ -457,7 +483,8 @@
    (delete-if #'(lambda(x) (not (or (alphanumericp x) (char= #\- x))))
 	      (substitute #\- #\Space title))))
 
-;;;---------Importing a Repo------------------------------------------
+
+;;---------Importing a Repo------------------------------------------
 
 (defun disassem-html-page(page)
   (let ((links nil))    
@@ -508,9 +535,13 @@
 		 (let ((s (cons :body (car lst))))
 		   (with-output-to-string (stream)
 		     (net.html.generator:html-print s stream))))
-	     ;;;
+	       ;;TODO : move handler case HERE...
 	       (to-html(lst)
-		 (str-strip (rm-wrapper-tags (to-wrapped-html lst)))))
+		 (handler-case 
+		     (str-strip (rm-wrapper-tags (to-wrapped-html lst)))
+		   (error(c) 
+		     (declare (ignore c))
+		     (cons IMPORT-FAILED-MSG lst)))))
 	(cond ((equal "post-timestamp-id"  str ) (up-ts   piece))
 	      ((equal "post-timestamp"     str ) (up-ts   piece))
 	      ((equal "post-header"        str ) (up-ts   piece))
@@ -701,13 +732,12 @@
      if (p-sidebar blog-post )
      collect (cons :body (cons (body blog-post) (funcall tlf blog-post)))))
 
-;;TODO
 (defun blog-url() 
   (format nil "http://~A/" (infer-repo-name)))
 
-;;TODO
 (defun blog-description() 
-  "about programming")
+  (let ((post (car (get-instances-by-value 'blog-post 'type-bit (about)))))
+    (intro post)))
 
 (defun generate-rss-page()
   (with-output-to-string (stream)
@@ -715,11 +745,11 @@
       (html-template:fill-and-print-template
        (template-path "rss.tmpl")
        (list :blog-title (blog-title)
-	     :blog-url (blog-url)
+	     :blog-url   (blog-url)
 	     :blog-description (blog-description)
 	     :rss-generation-date (fmt-timestamp (get-universal-time)) 
 	     :blog-posts          (collect-posts    #'rss-feed-format))
-	     :stream stream))))
+       :stream stream))))
 
 (defun generate-index-page(tlf &key create)
   (with-output-to-string (stream)
@@ -728,6 +758,7 @@
        (template-path "index.tmpl")
        (list :style-sheet (style-sheet)
 	     (unless (get-offline?) :google-analytics) (unless (get-offline?) (get-google-analytics))
+	     :rss-link (if (get-offline?) "<h2>rss</h2>" (get-rss-link))
 	     (if create :edit_part) (if create t) 
 	     :blog-title (blog-title)
 	     :main-repo-qs     (main-repo-qs)
@@ -736,8 +767,7 @@
 	     :about            (about-page)
 	     :sidebars         (collect-sidebars tlf)
 	     :blog-posts       (collect-posts    tlf))
-	     :stream stream))))
-
+       :stream stream))))
 
 (defun generate-editable-index-page()
   (generate-index-page #'use-edit-template :create t))
@@ -759,7 +789,6 @@
 					:intro (funcall render (intro blog-post)) 
 					:body  (funcall render (body blog-post)))
 				  :stream stream)))))
-
 
 (defun view-blog-post-page()
   (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string) 'render-md))
@@ -818,7 +847,7 @@
   (let ((blog-posts (get-instances-by-class 'blog-post)))
     (dolist (blog-post blog-posts)
       (setf (gc-bit blog-post) t))))
-    
+
 (defun undo-all-discards() 
   (let ((blog-posts (get-instances-by-value 'blog-post 'gc-bit t)))
     (dolist (blog-post blog-posts)
@@ -833,7 +862,7 @@
 	 (up (url-part bp)))
     (generate-blog-post-page tmpl up)))
 
-  
+
 (defun create-blog-post-page()
   (cond ((eq (hunchentoot:request-method) :GET)  (create-empty-blog-post 
 						  (template-path "post-edit.tmpl")
@@ -947,7 +976,6 @@
 (defun static-pages()
   (get-static-page (hunchentoot:request-uri)))
 
-
 (defun generate-static-pages()
   (let ((repo-path (create-if-missing (get-sandbox-pathname))))
     (push-pages-to-repo (namestring repo-path))
@@ -981,10 +1009,6 @@
   (setf *bliky-server* nil)
   (close-store))
 
-
-
 ;;-------------------------------------------
 
-;;(IMPORT-BLOG-POST "/home/alfons/fons.github.com/blog-post-with-code-examples.html")	       
 
-;;(fmt-timestamp (get-universal-time))

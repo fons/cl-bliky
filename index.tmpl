@@ -11,7 +11,7 @@
 
 <body>
   <div id="blog-title">
-    <h1> <!-- tmpl_var blog-title --> </h1>
+    <a href="/"> <h1> <!-- tmpl_var blog-title --> </h1> </a>
   </div>
   <div id="mainClm">
     <!-- tmpl_if edit_part -->
@@ -88,9 +88,7 @@
 	<!-- tmpl_else -->
 	<a href="/feed.xml"> 
 	  <!-- /tmpl_if -->
-	 <img src="http://github.com/fons/cl-bliky/raw/3c0b8599e6da878fb6870c71955a18915f2f1073/rss_pill_blue_32.png" 
-	       border="0"   />
-	  
+	  <!-- tmpl_var rss-link -->
 	</a>
     </div>
     <div id="side-bars">

@@ -49,7 +49,8 @@ a:visited{
            }
 
 h1,h2,h3,h4,h5,h6{
-                   color:#595959;
+                   #color:#595959;
+                   color:black;
                    font:bold 100% Sans-Serif;
                    padding:0px 0px 0px 0px;
                    margin:0px 0px 5px 0px;
@@ -101,16 +102,17 @@ Comment : Seperate format for the blog title
        
 ----------------------------------------------------------------*/
 #blog-title {
-              width:68%;
+              width:75%;
               }
 
 
 #blog-title h1{
                 color: #0000cc;
-                font:bold 250% Sans-Serif;
+                font:bold 280% Sans-Serif;
                 float:right;
-                width:35%;
+                width:40%;
                 padding:20px 0px 0px 0px;
+                #border: 0.15em solid #D6D6D6;
                 }
 
 
@@ -245,9 +247,10 @@ the 'general' settings.
 /*this is a special format to bring h2 in line with the other formats..*/
 
 #post-intro h2 {
-                 color:#595959;
+                 #color:#595959;
+                 color:black;
                  border-bottom:dotted 0px #cccccc;
-                 font-size:110%;
+                 font-size:140%;
                  }
 
 #post-body h2 {
