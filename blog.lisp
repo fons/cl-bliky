@@ -43,13 +43,19 @@
 (setf (hunchentoot:log-file) "/tmp/error.file")
 
 (defun str-strip(str)
-  (string-trim '(#\Return #\Space #\Newline #\Tab #\") str))
+  (string-trim '(#\Return #\Space #\Newline #\Tab #\Nul  ) str))
 
 
-;;from
-;;www.emmett.ca/~sabetts/slurp.html
-;;
+(defun rm-cr(x)
+  (if (equal x #\Return) #\Space x))
+
+(defun clean-str(str) 
+  (map 'string #'rm-cr str))
+
 (defun slurp-stream(stream)
+  ;;from
+  ;;www.emmett.ca/~sabetts/slurp.html
+  ;;
   (let ((seq (make-string (file-length stream))))
     (read-sequence seq stream)
     seq))
@@ -79,9 +85,66 @@
 	  ((equal "sidebar" s)    (sidebar))
 	  ( t                     (post)))))
 
+;;----string cleaning--------------------------------------
+;;(mapcar (lambda(x) (when (> x 2 ) x)) '( 1 2 3 ))
+;; TODO : add eol char to wsb
+;; this needs to be filtered out in the regular case before appending to the accumulator.
+;; If an eol is encountered with an eol in the wsb then insert a break
+(defun filter(fun lst)
+  (let ((l))
+    (dolist (obj lst)
+      (when (funcall fun obj) (push obj l)))
+    (nreverse l)))
+
+;;--------------------------------------------------------------------------
+(defun clean(s) 
+  (labels ((clean-helper(s accum wsb)
+	     (labels ((str-car(s)
+			(elt s 0))
+		      ;;
+		      (str-cdr(s);;
+			(subseq s 1))
+		      ;;
+		      (cr-p(c)
+			(char= #\Return c))
+		      ;;
+		      (nl-p(c)
+			(char= #\Newline c))
+		      ;;
+		      (chr-p(c) 
+			(and (not (cr-p c)) (not (nl-p c))))
+		      ;;
+		      (rln-st(str) 
+			(chr-p (str-car str)))
+		      ;;
+		      (eol-st(str)
+			(cr-p (str-car str)))
+		      ;;
+		      (p-acc(s accum)
+			(cons (str-car s) accum))
+		      ;;
+		      (p-acc-br(accum)
+			(append (nreverse (coerce "<br><br>" 'list)) accum))
+		      ;;
+		      (merge-wsb(wsb accum)
+			(append (filter (lambda (c) (not (cr-p c))) wsb) accum))
+		      ;;( (< (count #\Return ws) 1) (p-acc-br accum)) 
+		      (p-acc-br-ws(accum ws)
+			(cond 
+			  ( (< (length ws) 1)                   (p-acc-br accum))
+			  ( (eq (count #\Space ws) (length ws)) (p-acc-br accum))
+			  ( t                                   (merge-wsb ws accum)))))
+	       
+	       (cond ((eq (length s) 0)     (p-acc-br-ws accum wsb))
+		     ((rln-st s) (clean-helper (str-cdr s) accum                        (p-acc s wsb)))
+		     ((eol-st s) (clean-helper (str-cdr s) (p-acc-br-ws accum wsb)      nil          )) 
+		     (t          (clean-helper (str-cdr s) accum                        wsb          ))))))
+    (coerce (nreverse (clean-helper s nil nil)) 'string)))
+;;--------------------------------------------------------------------------
+
 (defun render-md(s)
   (with-output-to-string (stream)
-    (markdown:markdown s :stream stream :format :html)))
+    (markdown:markdown (clean s) :stream stream :format :html)))
 
 (defpclass blog-post ()
   ((title :initarg :title
@@ -606,7 +669,7 @@
 (defun open-blog-store() 
   (let ((blog-store (list :BDB (blog-store-location) )))
     (if (null *store-controller*)  
-	(open-store  blog-store )
+	(open-store  blog-store :recover t)
 	(print "store already opened"))))
 
 
@@ -802,10 +865,9 @@
   (let ((blog-post (get-live-blog-post (hunchentoot:query-string))))
     (setf (title    blog-post) (hunchentoot:post-parameter "title"))
     (setf (intro    blog-post) (str-strip (hunchentoot:post-parameter "intro")))
-    (setf (body     blog-post) (str-strip (hunchentoot:post-parameter "body")))
+    (setf (body     blog-post) (str-strip (hunchentoot:post-parameter  "body")))
     (setf (url-part blog-post) (make-url-part (title blog-post)))
     (hunchentoot:redirect "/" )))
-
 
 
 (defun split-sequence(seq tkw kw)
@@ -1011,6 +1073,7 @@
   (setf *bliky-server* nil)
   (close-store))
 
-;;-------------------------------------------
+;;-----------------
 
 
+  
