@@ -78,12 +78,14 @@
 	    (string-upcase (nth tz TIMEZONE)))))
 
 (defun str2type(str) 
-  (let ((s (str-strip str)))
-    (cond ((eq    (not t)   s)    (post))
-	  ((equal "post"    s)    (post))
-	  ((equal "about"   s)    (about))
-	  ((equal "sidebar" s)    (sidebar))
-	  ( t                     (post)))))
+  (labels ((strip(str)
+	     (string-trim '(#\Return #\Space #\Newline #\Tab #\Nul #\"  ) str)))
+    (let ((s (strip str)))
+      (cond ((eq     (not t)   s)    (post))
+	    ((equalp "post"    s)    (post))
+	    ((equalp "about"   s)    (about))
+	    ((equalp "sidebar" s)    (sidebar))
+	    ( t                     (post))))))
 
 ;;----string cleaning--------------------------------------
 ;;(mapcar (lambda(x) (when (> x 2 ) x)) '( 1 2 3 ))
@@ -486,8 +488,7 @@
   (run-git "merge publish"))
 
 (defun remove-files()
-  (dolist (fn (string-to-list2 (run-cmd "ls") #\|))
-    ;;(format t "~A~%" fn)
+  (dolist (fn (filter (lambda(x) (not (equalp "CNAME" x))) (string-to-list2 (run-cmd "ls") #\|)))
     (run-cmd "cp" (format nil "~A ~A" fn (get-idiot-location)))
     (run-cmd "rm" (format nil "~A" fn ))))
 
@@ -1008,12 +1009,11 @@
     (publish-rss-page)
     (publish-other-pages)))
 
-
 (defun publish-pages()
   (let ((repo-pathname (get-repo-pathname)))
     (switch-to-repo repo-pathname)
     (git-publish-branch)
-    (remove-files)
+    (when (get-mainstore?) (remove-files))    
     (push-pages-to-repo (namestring repo-pathname) )
     (git-add-all-posts)
     (when (get-mainstore?) (git-rm-discarded-posts))
