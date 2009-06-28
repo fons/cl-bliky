@@ -1,5 +1,5 @@
 # CL-BLIKY
-<title>
+
 ## Description
 
 cl-bliky is a very simple blogging engine written in lisp.
@@ -31,9 +31,13 @@ cl-bliky depends on the following packages :
 
 ## Initial Startup
 
+## Copyright Notice
 
-
-## Acknowledgements
+* cl-bliky
+ 
+cl-bliky is released as open source under the [GPL](http://www.gnu.org/licenses/gpl-3.0.txt). 
+This distribution may reference images distributed under a different license. 
+These images are not essential to the sofware.
 
 * rss_pill_blue_32.png
 
