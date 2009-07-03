@@ -94,15 +94,16 @@ h3 {
      font-size:110%;
      }
 
+pre {  }
 
-pre,code{
-          border: 0.15em solid #D6D6D6;
-          border-left: 0.3em solid #D6D6D6;
-          display: block
-          padding: 1em 1em 1em 1em;
-          color:#330066;
-          background:#EDEDED;
-          }
+code{
+      #border: 0.30em solid #D6D6D6;
+      border-left: 0.3em solid #D6D6D6;
+      display: block;
+      padding: 1em 1em 1em 1em;
+      color:#330066;
+      background:#EDEDED;
+      }
 
 
 /*---------------------------------------------------------------
@@ -130,13 +131,13 @@ Comment : Seperate format for the blog title
               }
 
 
-#blog-title h1{
-                color: #0000cc;
-                font:bold 280% Sans-Serif;
-                float:right;
-                width:40%;
-                padding:20px 0px 0px 0px;
-                #border: 0.15em solid #D6D6D6;
+#blog-title h1 {
+                 color: #0000cc;
+                 font:bold 280% Sans-Serif;
+                 float:right;
+                 width:30%;
+                 padding:20px 0px 0px 0px;
+                 #border: 0.15em solid #D6D6D6;
                 }
 
 

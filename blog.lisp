@@ -119,9 +119,10 @@
       (when (funcall fun obj) (push obj l)))
     (nreverse l)))
 
-;;--------------------------------------------------------------------------
+
+
 (defun clean(s) 
-  (labels ((clean-helper(s accum wsb)
+  (labels ((clean-helper(s accum wsb eolf)
 	     (labels ((str-car(s)
 			(elt s 0))
 		      ;;
@@ -143,32 +144,43 @@
 		      (eol-st(str)
 			(cr-p (str-car str)))
 		      ;;
+		      (neolf-st (wsb eolf) 
+			(cond  
+			  ( (and (> (length wsb) 3) (eq (count #\Space wsb) (length wsb)))            t)
+			  ((not eolf)                                       t)
+			  (t                                           (not t))))
+		      ;;
 		      (p-acc(s accum)
 			(cons (str-car s) accum))
 		      ;;
 		      (p-acc-br(accum)
-			(append (nreverse (coerce "<br><br>" 'list)) accum))
+			(append (nreverse (coerce (string #\Newline) 'list)) accum))
+		      ;;
+		      (p-acc-br-alt(accum)
+			(append (nreverse (coerce "<br /><br />" 'list)) accum))
 		      ;;
 		      (merge-wsb(wsb accum)
 			(append (filter (lambda (c) (not (cr-p c))) wsb) accum))
 		      ;;( (< (count #\Return ws) 1) (p-acc-br accum)) 
 		      (p-acc-br-ws(accum ws)
 			(cond 
+			  ;; just an empty line -> insert <br />
 			  ( (< (length ws) 1)                   (p-acc-br accum))
-			  ( (eq (count #\Space ws) (length ws)) (p-acc-br accum))
+			  ( (eq (count #\Space ws) (length ws)) (p-acc-br-alt accum))
 			  ( t                                   (merge-wsb ws accum)))))
-	       
-	       (cond ((eq (length s) 0)     (p-acc-br-ws accum wsb))
-		     ((rln-st s) (clean-helper (str-cdr s) accum                        (p-acc s wsb)))
-		     ((eol-st s) (clean-helper (str-cdr s) (p-acc-br-ws accum wsb)      nil          )) 
-		     (t          (clean-helper (str-cdr s) accum                        wsb          ))))))
-    (coerce (nreverse (clean-helper s nil nil)) 'string)))
-;;--------------------------------------------------------------------------
+	       (cond ((eq (length s) 0)                                      (p-acc-br-ws accum  wsb ))
+		     ((neolf-st wsb eolf) (clean-helper (str-cdr s) accum                   (p-acc s wsb) nil ))
+		     ((rln-st  s)         (clean-helper (str-cdr s) accum                   (p-acc s wsb) t   ))
+		     ((eol-st  s)         (clean-helper (str-cdr s) (p-acc-br-ws accum wsb) nil           t   )) 
+		     (t                   (clean-helper (str-cdr s) accum                   wsb         t ))))))
+    (coerce (nreverse (clean-helper s nil nil t)) 'string)))
+
 
 (defun render-md(s)
   (with-output-to-string (stream)
     (markdown:markdown (clean s) :stream stream :format :html)))
 
+;;--------------------------------------------------------------------------
 (defpclass blog-post ()
   ((title :initarg :title
 		   :accessor title)
@@ -288,7 +300,7 @@
   (let ((val (get-bliky-setting 'rss-link)))
     (if val
 	val
-	(set-rss-link nil))))
+	(set-rss-link "<h2>rss</h2>"))))
 
 (defun set-remote-repo(repo)
   (set-bliky-setting 'remote-repo repo))
@@ -1095,6 +1107,13 @@
   (close-store))
 
 ;;-----------------
+(defun fmt-setter(k v) 
+  (handler-case 
+      (format t "~A -> ~A~%" k v)
+    (error(c) 
+      (format t "error : ~A~%" c))))
 
+(defun show-settings()
+  (map-btree #'fmt-setter (get-settings)))
 
   
