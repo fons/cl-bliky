@@ -1,0 +1,120 @@
+<!---
+;;
+;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
+;;
+;;    This file is part of cl-bliky.
+;;
+;;    cl-bliky is free software: you can redistribute it and/or modify
+;;    it under the terms of the GNU General Public License as published by
+;;   the Free Software Foundation, either version 3 of the License, or
+;;    (at your option) any later version.
+;;
+;;    cl-bliky is distributed in the hope that it will be useful,
+;;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;    GNU General Public License for more details.
+;;
+;;    You should have received a copy of the GNU General Public License
+;;    along with cl-bliky.  If not, see <http://www.gnu.org/licenses/>
+;;
+;;
+
+--->
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset =UTF-8"> 
+      <title> Blog Engine Settings </title>
+      <style type="text/css">
+	<!-- tmpl_var style-sheet -->
+      </style>
+    </head>
+
+<body>
+  <div id="options-header">
+    <a href="/"> <h1> Options </h1> </a>
+  </div>
+  <div id="options-page">
+
+
+    Below are the current settings for the various options.
+    <hr>
+    <form method="post" action="?">
+
+      <input type="checkbox" name="is-mainstore?" <!-- tmpl_var is-mainstore --> >  
+      When this box is checked the current store is the main store. The repo will be synched with the pages 
+      in the current store.
+      <hr>
+
+      <input type="checkbox" name="is-offline?" <!-- tmpl_var is-offline -->  >
+      When this box is checked you are working off line. Publishing to the remote repo is disabled.
+      <hr>
+
+      <input type="text" name="bliky-port"     size="60" value="<!-- tmpl_var bliky-port -->" > 
+      the port used by the web server 
+      <hr>
+
+      <input type="text" name="repo-pathname"  size="60" value="<!-- tmpl_var repo-pathname -->" > 
+      the path to the main repo
+      <hr>
+
+      <input type="text" name="sandbox-pathname"  size="60" value="<!-- tmpl_var sandbox-pathname -->" > 
+      path where the previews are stored
+      <hr>
+
+      <input type="text" name="template-pathname" size="60" value="<!-- tmpl_var template-pathname -->" > 
+      path where the html templates are stored
+      <hr>
+
+      <input type="text" name="script-pathname" size="60" value="<!-- tmpl_var script-pathname -->" > 
+      path where the scripts are stored; Used in loader scripts run from the repl
+      <hr>
+
+      <input type="text" name="idiot-location" size="60" value="<!-- tmpl_var idiot-location -->" > 
+      the old files are copied here before the repo is synched with the store.
+      <hr>
+
+      <input type="text" name="remote-repo" size="60" value="<!-- tmpl_var remote-repo -->" > 
+      name of the host where the remote git repository is located.
+      <hr>
+      
+      <input type="text" name="blog-title" size="60" value="<!-- tmpl_var blog-title -->" > 
+      title of the blog (used in the rss feed as well).
+      <hr>
+      This is the html which enables the contact form generated
+      by <a href=\"http://kontactr.com/user/prognotes\"> kontactr.com </a>
+      <textarea  rows="3" cols="150" type="text" name="contact-info"> 
+	<!-- tmpl_var contact-info --> 
+      </textarea>
+      This is web analytics javascript from <a href="http://www.google.com"> google analytics </a>
+      <textarea  rows="10" cols="150" type="text" name="web-analytics"> 
+	<!-- tmpl_var web-analytics --> 
+      </textarea>
+      This is the image used for the rss link.
+      <textarea  rows="3" cols="150" type="text" name="rss-image-link"> 
+	<!-- tmpl_var rss-image-link --> 
+      </textarea>
+      <input type="submit" value="save options" />    
+    </form>
+    <br>
+    <hr>
+    Java script or other files used to generate contact forms or web analytics cen be uploaded below.
+    Code is injected into the web pages as part of the publishing process. 
+    <form enctype="multipart/form-data" method="post" action="?save-option-file">
+      <select name="which" size=1>
+	<option value="contact-info" selected > contact info
+	<option value="web-analytics"         > web analytics
+	<option value="rss-image-link"        > rss image link
+      </select>
+      <input type="file"   size="40"   name="file" value="select file" >
+      <input type="submit" size="20"   name="file" value="upload">
+    </form>
+    <hr>
+    <br>
+  </div>
+</body>
+
+</html>
+
+

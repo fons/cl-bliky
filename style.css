@@ -73,8 +73,9 @@ a:visited{
            }
 
 h1,h2,h3,h4,h5,h6{
-                   #color:#595959;
-                   color:black;
+                   color:#595959;
+                   #color:black;
+                   #color:darkblue;
                    font:bold 100% Sans-Serif;
                    padding:0px 0px 0px 0px;
                    margin:0px 0px 5px 0px;
@@ -280,6 +281,7 @@ the 'general' settings.
 
 #post-body h2 {
                 color:#595959;
+                #color:black;
                 border-bottom:dotted 0px #cccccc;
                 font-size:140%;
                 }
@@ -400,31 +402,60 @@ a blog post
                  font:bold 110% Verdana,Sans-Serif;
                  }
 
-/*--------------end of post-edit.tmpl style -------------------------*/
-/*
-@media handheld {
-  div#mainClm{
-               float:none;
-               width:90%;}
-  div#sideBar{
-               padding:13px 50px 10px 5%;
-               text-align:left;}
-}
-*/
 
-/*#div#header{
-#            padding:0px 0px 8px 0px;
-            #margin:0px 0px 20px 0px;
-            #border-bottom:solid 1px #eeeeee;
-            #border-top:solid 2px #FFEBCD;
-            #background:#FFEBCD;color:#8B4513;
+/*--------------end of post-edit.tmpl style -------------------------*/
+/* ---------------------------------------------------------------------
+Sheet       : import.tmpl
+Purpose     : import a repo
+Comment     : These are the styles used when importing a repo
+               
+
+-----------------------------------------------------------------------*/
+#import-page{
+            float:left;
+            padding:13px 50px 10px 5%;
+            width:80%;
             }
 
-strike{color:#999999;}
-.bug{padding:5px;border:0px;}
-.byline{padding:0px;margin:0px;color:#444444;font-size:80%;}
 
-.byline a:hover{text-decoration:underline;}
+#import-header {                
+               margin:0px 0px 0px 0px;
+               font-size:240%;
+               }
+
+#import-header h1 { 
+                  margin:0px 0px 0px 0px;
+                  color:salmon; 
+                  text-align: center;
+                  }
 
 
-*/
+/*--------------end of import.tmpl style -------------------------*/
+
+/* ---------------------------------------------------------------------
+Sheet       : import.tmpl
+Purpose     : import a repo
+Comment     : These are the styles used when importing a repo
+-----------------------------------------------------------------------*/
+
+#options-header {                
+                  margin:0px 0px 0px 0px;
+                  font-size:240%;
+                  }
+
+#options-header h1 { 
+                     margin:0px 0px 0px 0px;
+                     color:salmon; 
+                     text-align: center;
+                     }
+
+#options-page{
+               float:left;
+               padding:10px 0px 0px 50px;
+               width:80%;
+               font-size: 100%;
+               }
+
+
+/*----------------- end of options style ----------------------------*/
+

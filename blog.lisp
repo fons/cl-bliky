@@ -1,4 +1,4 @@
-;; -*- Mode : LISP; Syntax: COMMON-LISP; 
+; -*- Mode : LISP; Syntax: COMMON-LISP; 
 ;;
 ;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
 ;;
@@ -118,7 +118,6 @@
     (dolist (obj lst)
       (when (funcall fun obj) (push obj l)))
     (nreverse l)))
-
 
 
 (defun clean(s) 
@@ -258,7 +257,9 @@
   (get-value k (get-settings)))
 
 (defun set-bliky-port(port)
-  (set-bliky-setting 'bliky-port port))
+  (labels ((conv-i(port)
+	     (if (integerp port) port (parse-integer port)))) 
+    (set-bliky-setting 'bliky-port (conv-i port))))
 
 (defun get-bliky-port()
   (let ((val (get-bliky-setting 'bliky-port)))
@@ -345,6 +346,17 @@
 	       (format nil "~A/cl-bliky" home))))
     (get-bliky-pathname 'template-pathname #'df-path)))
 
+;;---
+(defun set-script-pathname(p)
+  (set-bliky-pathname p 'script-pathname))
+  
+(defun get-script-pathname()
+  (labels ((df-path()
+	     (let ((home (sb-posix:getenv "HOME")))
+	       (format nil "~A/cl-bliky/js" home))))
+    (get-bliky-pathname 'script-pathname #'df-path)))
+
+;;--
 (defun set-idiot-location(p)
   (set-bliky-pathname p 'idiot-location))
 
@@ -388,6 +400,9 @@
       t
       (not t)))
 
+(defun show-settings()
+  (map-btree (lambda(k v) (format t "~A->~A~%" k v)) (get-settings)))
+
 ;;---------------end of settings ---------------------------------------
 
 ;;-----------------------------------------------------------------------
@@ -405,39 +420,35 @@
     (subseq pn (+ index 1) (- (length pn) 1))))
 
 ;;----------------------------
-(defun tracking-js-path()
-  (concatenate 'string (namestring (get-template-pathname)) "/js/google-analytics.js"))
-
-(defun load-tracking-js()
+(defun load-script(fn path)
   (handler-case 
-      (with-open-file (stream (tracking-js-path) :direction :input)
-	(set-google-analytics (slurp-stream stream)))
+      (with-open-file (stream path :direction :input)
+	(funcall fn (slurp-stream stream)))
     (error(c) 
       (declare (ignore c))
-      nil)))
+      (format t "error : ~A" c))))
+  
+(defun tracking-js-path()
+  (concatenate 'string (namestring (get-script-pathname)) "/google-analytics.js"))
+
+(defun load-tracking-js()
+  (load-script #'set-google-analytics (tracking-js-path)))
+
 
 ;----------------------------
 (defun contact-js-path()
-  (concatenate 'string (namestring (get-template-pathname)) "/js/contact-info.js"))
+  (concatenate 'string (namestring (get-script-pathname)) "/contact-info.js"))
 
 (defun load-contact-js()
-  (handler-case 
-      (with-open-file (stream (contact-js-path) :direction :input)
-	(set-contact-info (slurp-stream stream)))
-    (error(c) 
-      (declare (ignore c))
-      nil)))
-;----------------------------
+  (load-script #'set-contact-info (contact-js-path)))
+
+;;----------------------------
 (defun rss-js-path()
-  (concatenate 'string (namestring (get-template-pathname)) "/js/rss-tag.js"))
+  (concatenate 'string (namestring (get-script-pathname)) "/rss-tag.js"))
 
 (defun load-rss-js()
-  (handler-case 
-      (with-open-file (stream (rss-js-path) :direction :input)
-	(set-rss-link (slurp-stream stream)))
-    (error(c) 
-      (declare (ignore c))
-      nil)))
+  (load-script #'set-rss-link (rss-js-path)))
+
 ;;-----------------------------------------------------------------------------------
 ;;-----------git-repo-managment code-------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -814,7 +825,6 @@
 (defun use-edit-template(blog-post)
   (cons :edit_part (cons t (use-static-template blog-post))))
 
-
 (defun collect-posts(tlf)
   (loop for blog-post in (nreverse 
 			  (get-instances-by-range 'blog-post 
@@ -994,8 +1004,7 @@
   (hunchentoot:redirect "/" ))
 
 (defun import-remote ()
-  (format nil "this is a test : ~A" (hunchentoot:post-parameters) ) 
-)
+  (format nil "this is a test : ~A" (hunchentoot:post-parameters) ) )
 
 (defun import-local()
   ( do-import (hunchentoot:post-parameter "repo-path")))
@@ -1004,6 +1013,82 @@
 (defun import-repo-page()
   (cond ((eq (hunchentoot:request-method) :GET)  (generate-import-page))
 	((eq (hunchentoot:request-method) :POST) ( do-import (hunchentoot:post-parameter "file")))))
+
+
+(defun generate-options-page()
+  (labels ((checked?(fn)
+	     (when (funcall fn) "checked")))
+    (with-output-to-string (stream)
+      (let ((html-template:*string-modifier* #'identity))
+	(html-template:fill-and-print-template
+	 (template-path "options.tmpl")
+	 (list :style-sheet (style-sheet)
+	       :blog-title        (blog-title)
+	       :bliky-port        (get-bliky-port)
+	       :idiot-location    (get-idiot-location)
+	       :remote-repo       (get-remote-repo)
+	       :repo-pathname     (get-repo-pathname)
+	       :is-mainstore      (checked? #'get-mainstore? )
+	       :is-offline        (checked? #'get-offline?) 
+	       :template-pathname (get-template-pathname)
+	       :script-pathname   (get-script-pathname)
+	       :contact-info      (clean-str (str-strip (get-contact-info)))
+	       :rss-image-link    (clean-str (str-strip (get-rss-link)))
+	       :web-analytics     (clean-str (str-strip (get-google-analytics)))
+	       :sandbox-pathname  (get-sandbox-pathname))
+	 :stream stream)))))
+
+(defun save-option(fn p)
+  (funcall fn (hunchentoot:post-parameter p)))
+
+(defun save-checked(fn p)
+  (funcall fn (string-equal (hunchentoot:post-parameter p) "on")))
+
+(defun save-options-main()
+  (save-checked #'set-mainstore?        "is-mainstore?")
+  (save-checked #'set-offline?          "is-offline?")
+  (save-option  #'set-bliky-port        "bliky-port")
+  (save-option  #'set-repo-pathname     "repo-pathname")
+  (save-option  #'set-sandbox-pathname  "sandbox-pathname")
+  (save-option  #'set-template-pathname "template-pathname")
+  (save-option  #'set-script-pathname   "script-pathname")
+  (save-option  #'set-blog-title        "blog-title")
+  (save-option  #'set-remote-repo       "remote-repo")
+  (save-option  #'set-google-analytics  "web-analytics")
+  (save-option  #'set-contact-info      "contact-info")
+  (save-option  #'set-rss-link          "rss-image-link")
+  (save-option  #'set-idiot-location    "idiot-location"))
+
+(defun save-resource(action params)
+  (labels ((make-lookup()
+	     (let ((lst))
+	       (setf lst (acons "web-analytics"  #'set-google-analytics lst))
+	       (setf lst (acons "contact-info"   #'set-contact-info lst))
+	       (setf lst (acons "rss-image-link" #'set-rss-link lst))
+	       lst))
+	   ;;
+	   (lookup-action (action lst)
+	     (cdr (assoc action lst :test #'equal))))
+    (let  ((fn (namestring(car params))))
+      (load-script (lookup-action action (make-lookup)) fn))))
+
+(defun redirect-to-options-page()
+  (hunchentoot:redirect (concatenate 'string "/options/?")))
+  
+(defun save-options()
+  (let ((which (hunchentoot:post-parameter "which"))
+	(file  (hunchentoot:post-parameter "file")))
+    (labels ((empty-qs()
+	       (eq 0 (length (hunchentoot:query-string)))))
+      (cond ( (empty-qs)(progn (save-options-main) 
+			       (hunchentoot:redirect "/" )))
+	    ( t         (progn (save-resource which file)
+			       (redirect-to-options-page)))))))
+
+
+(defun options-page()
+  (cond ((eq (hunchentoot:request-method) :GET)  (generate-options-page))
+	((eq (hunchentoot:request-method) :POST) (save-options))))
 
 (defun discard-blog-post-page()
   (cond ((eq (hunchentoot:request-method) :GET)  (discard-blog-post))
@@ -1073,6 +1158,7 @@
 (defun static-pages()
   (get-static-page (hunchentoot:request-uri)))
 
+
 (defun generate-static-pages()
   (let ((repo-path (create-if-missing (get-sandbox-pathname))))
     (push-pages-to-repo (namestring repo-path))
@@ -1091,6 +1177,7 @@
 	    (hunchentoot:create-regex-dispatcher "^/import-local/$"   (protect 'import-local))
 	    (hunchentoot:create-regex-dispatcher "^/import-remote/$"  (protect 'import-remote))
 	    (hunchentoot:create-regex-dispatcher "^/publish/$"        (protect 'publish-pages))
+	    (hunchentoot:create-regex-dispatcher "^/options/$"        (protect 'options-page))
 	    (hunchentoot:create-regex-dispatcher "^/rss-feed/$"       (protect 'generate-rss-page))
 	    (hunchentoot:create-regex-dispatcher "^/static-pages/$"   (protect 'generate-static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/undo-discards/$"  (protect 'undo-discards))
@@ -1106,14 +1193,5 @@
   (setf *bliky-server* nil)
   (close-store))
 
-;;-----------------
-(defun fmt-setter(k v) 
-  (handler-case 
-      (format t "~A -> ~A~%" k v)
-    (error(c) 
-      (format t "error : ~A~%" c))))
-
-(defun show-settings()
-  (map-btree #'fmt-setter (get-settings)))
 
   

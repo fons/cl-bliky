@@ -26,9 +26,10 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset =UTF-8"> 
     <title> <!-- tmpl_var blog-title --> </title>
-    <link rel="stylesheet" type="text/css" href="/style.css">
+    <style type="text/css">
+      <!-- tmpl_var style-sheet -->
+    </style>
   </head>
-
 
 <body>
   <div id="blog-title">
@@ -37,6 +38,7 @@
   <div id="mainClm">
     <!-- tmpl_if edit_part -->
      <hr>
+     <a href="/options/?">  [options] </a>
      <a href="/create/?post"> [create new post] </a>
      <a href="/create/?sidebar"> [create new side bar] </a>
      <a href="/undo-discards/?"> [restore discarded posts] </a>
