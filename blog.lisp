@@ -60,6 +60,13 @@
 (defmacro main-repo-qs()    `"main-repo")
 (defmacro sandbox-repo-qs() `"sandbox-repo")
 
+;;This macro is used in 'clean to identify lines which
+;; are end-of-line markers.
+;; So two with (clean-ws-guard - 1) spaces and a clf
+;; will result in an empty line.
+;; This is the same as the markdown package expects; 
+;;
+(defmacro clean-ws-guard() `3)
 
 (setf (hunchentoot:log-file) "/tmp/error.file")
 
@@ -109,7 +116,6 @@
 	    ( t                     (post))))))
 
 ;;----string cleaning--------------------------------------
-;;(mapcar (lambda(x) (when (> x 2 ) x)) '( 1 2 3 ))
 ;; TODO : add eol char to wsb
 ;; this needs to be filtered out in the regular case before appending to the accumulator.
 ;; If an eol is encountered with an eol in the wsb then insert a break
@@ -145,7 +151,7 @@
 		      ;;
 		      (neolf-st (wsb eolf) 
 			(cond  
-			  ( (and (> (length wsb) 3) (eq (count #\Space wsb) (length wsb)))            t)
+			  ( (and (> (length wsb) (clean-ws-guard)) (eq (count #\Space wsb) (length wsb)))    t)
 			  ((not eolf)                                       t)
 			  (t                                           (not t))))
 		      ;;
