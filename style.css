@@ -77,8 +77,9 @@ h1,h2,h3,h4,h5,h6{
                    #color:black;
                    #color:darkblue;
                    font:bold 100% Sans-Serif;
-                   padding:0px 0px 0px 0px;
-                   margin:0px 0px 5px 0px;
+                   #padding:0px 0px 0px 0px;
+                   margin:5px 0px 5px 0px;
+                   #margin:0px 0px 5px 0px;
                    width:100%;
                    text-align:left;
                    }
@@ -93,6 +94,8 @@ h2 {
 
 h3 {
      font-size:110%;
+     color:black;
+
      }
 
 pre {  }

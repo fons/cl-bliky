@@ -1,4 +1,4 @@
-; -*- Mode : LISP; Syntax: COMMON-LISP; 
+;; -*- Mode : LISP; Syntax: COMMON-LISP; 
 ;;
 ;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
 ;;
@@ -1112,11 +1112,13 @@
   (labels ((publish-index-page()
 	     (let ((fn (concatenate 'string repo-path "/index.html")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
-		 (format stream (generate-index-page #'use-static-template)))))
+		 (format stream "~A" (generate-index-page #'use-static-template))
+		  ;;(generate-index-page #'use-static-template)
+			 )))
 	   (publish-rss-page()
 	     (let ((fn (concatenate 'string repo-path "/feed.xml")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
-		 (format stream (generate-rss-page)))))
+		 (format stream "~A" (generate-rss-page)))))
 	   (url-parts()
 	     (let ((lst))
 	       (labels ((up(u) 
@@ -1128,7 +1130,7 @@
 	     (dolist (up (url-parts))
 	       (let ((fn (concatenate 'string repo-path "/" up ".html")))
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
-		   (format stream (generate-blog-post-page (template-path "post.tmpl") up 'render-md)))))))
+		   (format stream "~A" (generate-blog-post-page (template-path "post.tmpl") up 'render-md)))))))
     (publish-index-page)
     (publish-rss-page)
     (publish-other-pages)))
@@ -1172,7 +1174,7 @@
   
 (setq hunchentoot:*dispatch-table* 
       (list (hunchentoot:create-regex-dispatcher "[.]html"            (protect 'static-pages))
-	    (hunchentoot:create-regex-dispatcher "[.]xml"            (protect 'static-pages))
+	    (hunchentoot:create-regex-dispatcher "[.]xml"             (protect 'static-pages))
 	    (hunchentoot:create-regex-dispatcher "^/$"                (protect 'generate-editable-index-page))
 	    (hunchentoot:create-regex-dispatcher "^/view/$"           (protect 'view-blog-post-page))
 	    (hunchentoot:create-regex-dispatcher "^/edit/$"           (protect 'edit-blog-post-page))
