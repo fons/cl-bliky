@@ -1,4 +1,5 @@
-<!---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
 ;;
 ;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
 ;;
@@ -19,10 +20,12 @@
 ;;
 ;;
 
---->
+-->
 
-<?xml version="1.0"?>
-<rss version='2.0' xmlns:atom="http://www.w3.org/2005/Atom">
+<?xml-stylesheet type="text/xsl" media="screen" href="/~d/styles/rss2full.xsl"?>
+<?xml-stylesheet type="text/css" media="screen" href="http://feeds.feedburner.com/~d/styles/itemcontent.css"?>
+<rss xmlns:pheedo="http://www.pheedo.com/namespace/pheedo" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+<!-- rss version='2.0' xmlns:atom="http://www.w3.org/2005/Atom" -->
   <channel>
     <title> <!-- tmpl_var blog-title --> </title>
     <link>  <!-- tmpl_var blog-url --> </link>
@@ -33,6 +36,7 @@
       <title> <!-- tmpl_var title --> </title>
       <link> <!--tmpl_var blog-url  --><!--tmpl_var url-part -->.html </link>
       <description> <!-- tmpl_var intro --> </description> 
+      <content:encoded><![CDATA[<!-- tmpl_var cdata --> ]]></content:encoded>
       <guid> <!-- tmpl_var blog-url --><!-- tmpl_var url-part -->.html </guid>      
       <pubDate> <!-- tmpl_var timestamp --> </pubDate>
     </item>

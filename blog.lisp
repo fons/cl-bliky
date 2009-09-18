@@ -181,6 +181,37 @@
     (coerce (nreverse (clean-helper s nil nil t)) 'string)))
 
 
+(defun escape-html-chars(str &optional (start 0))
+  ;; find the first char to be escaped, escape it, and return a list of the
+  ;; position in the string plus the new string.
+  ;; Repeat, until done, when the car of the list is nil
+  (labels  ((escape-html-chars-helper(str start)
+	      (labels ((escape-string(str) 
+			 (labels ((escape-chars(c) 
+				    ;; add additional chars to be escaped here...
+				    (cond ((char= c #\<) "&lt;")
+					  ((char= c #\>) "&gt;")
+					  ( t             (string c)))))
+			   (concatenate 'string (escape-chars (char str 0)) (subseq str 1))))
+		       ;;
+		       (escape-chars-pred(c) 
+			 ;; add additional chars to be escaped here...
+			 (cond ((char= c #\<) t)
+			       ((char= c #\>) t)
+			       ( t             (not t)))))
+		;; if no chars to be escaped is found, return nil
+		(let* ((npos (position-if #'escape-chars-pred (subseq str start)))
+		       (epos (if npos (+ start npos) (not t) )) 
+		       (nstr (if epos (concatenate 'string (subseq str 0 epos)  
+						   (escape-string (subseq str epos)))
+				 str)))
+		  (list epos nstr)))))
+    (let ((res (escape-html-chars-helper str start)))
+      ;; recursion
+      (cond ((null (car res)) (cadr res))
+	    ( t               (escape-html-chars (cadr res) (car res)))))))
+  
+
 (defun render-md(s)
   (with-output-to-string (stream)
     (markdown:markdown (clean s) :stream stream :format :html)))
@@ -818,7 +849,10 @@
   (list :timestamp (fmt-timestamp (timestamp blog-post))
 	:title (title blog-post)
 	:url-part (url-part blog-post)
-	:intro (intro blog-post)))
+	:intro (escape-html-chars (render-md (intro blog-post)))
+	:cdata (render-md (str-strip (intro blog-post)))))
+
+;;(intro blog-post)
 
 (defun use-static-template(blog-post)
   (list :timestamp (fmt-timestamp (timestamp blog-post))
@@ -1201,5 +1235,6 @@
   (setf *bliky-server* nil)
   (close-store))
 
+;;;
 
-  
+
