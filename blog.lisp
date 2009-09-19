@@ -462,8 +462,7 @@
       (with-open-file (stream path :direction :input)
 	(funcall fn (slurp-stream stream)))
     (error(c) 
-      (declare (ignore c))
-      (format t "error : ~A" c))))
+      (declare (ignore c)))))
   
 (defun tracking-js-path()
   (concatenate 'string (namestring (get-script-pathname)) "/google-analytics.js"))
