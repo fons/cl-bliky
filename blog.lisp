@@ -349,6 +349,15 @@
 	val
 	(set-remote-repo DEFAULT-REMOTE-REPO-HOST))))
 
+(defun set-rss-validator-image(co)
+  (set-bliky-setting 'rss-validator-image co))
+
+(defun get-rss-validator-image()
+  (let ((val (get-bliky-setting 'rss-validator-image)))
+    (if val
+	val
+	(set-rss-validator-image ""))))
+
 ;;---------------path name code-----------------------------------------
 (defun create-if-missing(path)
   (unless (probe-file path) (sb-posix:mkdir path USRMODE))
@@ -1062,19 +1071,20 @@
 	(html-template:fill-and-print-template
 	 (template-path "options.tmpl")
 	 (list :style-sheet (style-sheet)
-	       :blog-title        (blog-title)
-	       :bliky-port        (get-bliky-port)
-	       :idiot-location    (get-idiot-location)
-	       :remote-repo       (get-remote-repo)
-	       :repo-pathname     (get-repo-pathname)
-	       :is-mainstore      (checked? #'get-mainstore? )
-	       :is-offline        (checked? #'get-offline?) 
-	       :template-pathname (get-template-pathname)
-	       :script-pathname   (get-script-pathname)
-	       :contact-info      (clean-str (str-strip (get-contact-info)))
-	       :rss-image-link    (clean-str (str-strip (get-rss-link)))
-	       :web-analytics     (clean-str (str-strip (get-google-analytics)))
-	       :sandbox-pathname  (get-sandbox-pathname))
+	       :blog-title          (blog-title)
+	       :bliky-port          (get-bliky-port)
+	       :idiot-location      (get-idiot-location)
+	       :remote-repo         (get-remote-repo)
+	       :repo-pathname       (get-repo-pathname)
+	       :is-mainstore        (checked? #'get-mainstore? )
+	       :is-offline          (checked? #'get-offline?) 
+	       :template-pathname   (get-template-pathname)
+	       :script-pathname     (get-script-pathname)
+	       :contact-info        (clean-str (str-strip (get-contact-info)))
+	       :rss-image-link      (clean-str (str-strip (get-rss-link)))
+	       :rss-validator-image (clean-str (str-strip (get-rss-validator-image)))
+	       :web-analytics       (clean-str (str-strip (get-google-analytics)))
+	       :sandbox-pathname    (get-sandbox-pathname))
 	 :stream stream)))))
 
 (defun save-option(fn p)
