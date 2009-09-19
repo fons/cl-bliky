@@ -349,14 +349,14 @@
 	val
 	(set-remote-repo DEFAULT-REMOTE-REPO-HOST))))
 
-(defun set-rss-validator-image(co)
-  (set-bliky-setting 'rss-validator-image co))
+(defun set-rss-validator(co)
+  (set-bliky-setting 'rss-validator co))
 
-(defun get-rss-validator-image()
-  (let ((val (get-bliky-setting 'rss-validator-image)))
+(defun get-rss-validator()
+  (let ((val (get-bliky-setting 'rss-validator)))
     (if val
 	val
-	(set-rss-validator-image ""))))
+	(set-rss-validator ""))))
 
 ;;---------------path name code-----------------------------------------
 (defun create-if-missing(path)
@@ -919,6 +919,7 @@
 	     :main-repo-qs     (main-repo-qs)
 	     :sandbox-repo-qs  (sandbox-repo-qs)
 	     (unless (get-offline?) :contact-info)  (unless (get-offline?) (contact-info))
+	     (unless (get-offline?) :rss-validator) (unless (get-offline?) (get-rss-validator))
 	     :about            (about-page)
 	     :sidebars         (collect-sidebars tlf)
 	     :blog-posts       (collect-posts    tlf))
@@ -1082,7 +1083,7 @@
 	       :script-pathname     (get-script-pathname)
 	       :contact-info        (clean-str (str-strip (get-contact-info)))
 	       :rss-image-link      (clean-str (str-strip (get-rss-link)))
-	       :rss-validator-image (clean-str (str-strip (get-rss-validator-image)))
+	       :rss-validator       (clean-str (str-strip (get-rss-validator)))
 	       :web-analytics       (clean-str (str-strip (get-google-analytics)))
 	       :sandbox-pathname    (get-sandbox-pathname))
 	 :stream stream)))))
@@ -1106,13 +1107,15 @@
   (save-option  #'set-google-analytics  "web-analytics")
   (save-option  #'set-contact-info      "contact-info")
   (save-option  #'set-rss-link          "rss-image-link")
+  (save-option  #'set-rss-validator     "rss-validator")
   (save-option  #'set-idiot-location    "idiot-location"))
 
 (defun save-resource(action params)
   (labels ((make-lookup()
 	     (let ((lst))
 	       (setf lst (acons "web-analytics"  #'set-google-analytics lst))
-	       (setf lst (acons "contact-info"   #'set-contact-info lst))
+	       (setf lst (acons "contact-info"   #'set-contact-info  lst))
+	       (setf lst (acons "rss-validator"  #'set-rss-validator lst))
 	       (setf lst (acons "rss-image-link" #'set-rss-link lst))
 	       lst))
 	   ;;
