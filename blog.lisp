@@ -18,6 +18,7 @@
 ;;    along with cl-bliky.  If not, see <http://www.gnu.org/licenses/>.
 ;;
 ;;
+;;(push #P"/home/fons/.sbcl/systems/" asdf:*central-registry*)
 
 (asdf:operate 'asdf:load-op :cl-html-parse)
 (asdf:operate 'asdf:load-op :htmlgen)
@@ -44,10 +45,14 @@
 (defvar *bliky-server*        (not t))
 
 ;;format classes
+;;controlled by the fmt-bit on the blog post object
+;;
 (defmacro html() `'html)
 (defmacro md() `'md)
 
 ;;blog classes
+;;controlled by the type-bit on the blog post object
+;;
 (defmacro post()      `'post) 
 (defmacro about()     `'about)
 (defmacro sidebar()   `'sidebar)
@@ -68,7 +73,17 @@
 ;;
 (defmacro clean-ws-guard() `3)
 
-(setf (hunchentoot:log-file) "/tmp/error.file")
+;(setf (hunchentoot:log-file) "/tmp/error.file")
+(setf hunchentoot:*message-log-pathname* "/tmp/error.file")
+
+
+
+(defun after (Funs args)
+  (labels ((after* (Funs args)
+	     (if (null Funs)
+		 args
+		 (after (cdr Funs) (funcall (car Funs) args)))))
+	   (after* (nreverse Funs) args)))
 
 (defun str-strip(str)
   (string-trim '(#\Return #\Space #\Newline #\Tab #\Nul  ) str))
@@ -212,9 +227,11 @@
 	    ( t               (escape-html-chars (cadr res) (car res)))))))
   
 
-(defun render-md(s)
-  (with-output-to-string (stream)
-    (markdown:markdown (clean s) :stream stream :format :html)))
+
+(defun to-list(parts)
+  (if (listp parts)
+      parts
+      (list parts)))
 
 ;;--------------------------------------------------------------------------
 (defpclass blog-post ()
@@ -222,8 +239,8 @@
 		   :accessor title)
    (intro :initarg :intro
 		   :accessor intro)
-   (body  :initarg  :body
-		    :accessor body)
+   (body         :initarg  :body
+		 :accessor body)
    (timestamp  :initarg  :timestamp
 	       :accessor timestamp
 	       :initform (get-universal-time)
@@ -231,9 +248,12 @@
    (gc-bit     :accessor gc-bit
 	       :index t
                :initform (not t))
+   (pub-bit    :accessor pub-bit
+	       :index t
+               :initform (not t))
    (fmt-bit    :initarg :fmt-bit
                :accessor fmt-bit
-	       :index t)
+               :index t)
    (type-bit   :initarg :type-bit
                :accessor type-bit
 	       :index t)
@@ -244,7 +264,7 @@
 
 (defmethod print-object ((u blog-post) stream)
   "specialize print object blog post"
-  (format stream "~&blog-post : [title = ~A] [url-part = ~A][time=~A][gc=~A]~%[type=~A][fmt=~A]~%[~A]~%[~A]~% "
+  (format stream "~&blog-post : [title = ~A] [url-part = ~A][time=~A][gc=~A][pub=~A]~%[type=~A][fmt=~A]~%[~A]~%[~A]~% "
 	  (if (slot-boundp u 'title) 
 	      (title u) 
 	    "(blog-post not set)")
@@ -257,6 +277,9 @@
 	  (if (slot-boundp u 'gc-bit)
 	      (gc-bit u)
 	    "(gc not set)")
+	  (if (slot-boundp u 'pub-bit)
+	      (pub-bit u)
+	    "(publish bit not set)")
 	  (if (slot-boundp u 'type-bit)
 	      (type-bit u)
 	    "(type bit not set)")
@@ -270,6 +293,30 @@
 	      (body u)
 	    "(body not set)")))
 
+;;
+;; blog post is md unless specified otherwise
+;;
+(defun p-blogpost-html(blog-post)
+  (cond ((equalp (fmt-bit blog-post) (html) )        t) 
+	( t                                     (not t))))
+
+(defun p-blogpost-md(blog-post)
+  (cond ((not (p-blogpost-html blog-post))    t) 
+	( t                              (not t))))
+
+(defun render-post (part post)
+  (cond ((p-blogpost-html post) (after (to-list part) post))
+	((p-blogpost-md   post) (after (cons 'render-md  (to-list part)) post))
+	(t                      (funcall part post))))
+
+(defun render-identity (part post)
+  (identity (funcall part post)))
+
+(defun render-md(s)
+  (with-output-to-string (stream)
+    (markdown:markdown (clean s) :stream stream :format :html)))
+;;
+;;
 ;;--------------settings-----------------
 ;;
 ;;
@@ -277,7 +324,7 @@
   (if *blog-store-location*
       *blog-store-location*
       (let ((home (sb-posix:getenv "HOME")))
-	(format nil "~A/store/blogs/" home))))
+	(ensure-directories-exist (format nil "~A/Data/bdb/store/blogs/" home)))))
 
 (defun get-settings()
   (let ((eb (get-from-root 'blog-settings)))
@@ -617,7 +664,10 @@
 	nil)))
 
 (defun create-blog-post(title intro body type)
-  (make-instance 'blog-post :title title :intro intro :body body :type-bit type))
+  (make-instance 'blog-post :title title :intro intro :body body :type-bit type :fmt-bit (md)))
+
+(defun create-html-blog-post(title intro body type)
+  (make-instance 'blog-post :title title :intro intro :body body :type-bit type :fmt-bit (html)))
 
 (defun create-blog-post-template(type)
   (let* ((title (format nil "new blog post dd ~A" (fmt-timestamp (get-universal-time))))
@@ -694,6 +744,7 @@
 		     (str-strip (rm-wrapper-tags (to-wrapped-html lst)))
 		   (error(c) 
 		     (declare (ignore c))
+		     (format t "error ~%~A" c)
 		     (cons IMPORT-FAILED-MSG lst)))))
 	(cond ((equal "post-timestamp-id"  str ) (up-ts   piece))
 	      ((equal "post-timestamp"     str ) (up-ts   piece))
@@ -726,7 +777,7 @@
   ;; the about post is always generated when it's not found
   ;; move the on found to the sidebar, so no info is lost..
   (when (equal type (about) ) (mv-about))
-  (let ((post (create-blog-post header intro body type)))
+  (let ((post (create-html-blog-post header intro body type)))
     (setf (timestamp post) ts-id)
     post))
       
@@ -857,18 +908,18 @@
   (list :timestamp (fmt-timestamp (timestamp blog-post))
 	:title (title blog-post)
 	:url-part (url-part blog-post)
-	:intro (escape-html-chars (render-md (intro blog-post)))
+	:intro (escape-html-chars (render-post 'intro blog-post))
 	:cdata (render-md (str-strip (intro blog-post)))))
 
 ;;(intro blog-post)
 
 (defun use-static-template(blog-post)
-  (list :timestamp (fmt-timestamp (timestamp blog-post))
+  (list :timestamp    (fmt-timestamp (timestamp blog-post))
 	:timestamp-id (timestamp blog-post)
-	:type (string-downcase (type-bit blog-post))
-	:title (title blog-post)
-	:url-part (url-part blog-post)
-	:intro (render-md (intro blog-post))))
+	:type         (string-downcase (type-bit blog-post))
+	:title        (title blog-post)
+	:url-part     (url-part blog-post)
+	:intro        (render-post 'intro blog-post)))
 
 (defun use-edit-template(blog-post)
   (cons :edit_part (cons t (use-static-template blog-post))))
@@ -915,7 +966,7 @@
 	     (unless (get-offline?) :google-analytics) (unless (get-offline?) (get-google-analytics))
 	     :rss-link (if (get-offline?) "<h2>rss</h2>" (get-rss-link))
 	     (if create :edit_part) (if create t) 
-	     :blog-title (blog-title)
+	     :blog-title       (blog-title)
 	     :main-repo-qs     (main-repo-qs)
 	     :sandbox-repo-qs  (sandbox-repo-qs)
 	     (unless (get-offline?) :contact-info)  (unless (get-offline?) (contact-info))
@@ -928,7 +979,7 @@
 (defun generate-editable-index-page()
   (generate-index-page #'use-edit-template :create t))
 
-(defun generate-blog-post-page(tmpl url-part &optional (render 'identity))
+(defun generate-blog-post-page(tmpl url-part &optional (render 'render-identity))
     (with-output-to-string (stream)
 			   (let ((blog-post (get-live-blog-post url-part))
 				 (html-template:*string-modifier* #'identity))
@@ -942,12 +993,12 @@
 					:timestamp (fmt-timestamp (timestamp blog-post))
 					:timestamp-id (timestamp blog-post)
 					:type         (string-downcase (type-bit blog-post))
-					:intro (funcall render (intro blog-post)) 
-					:body  (funcall render (body blog-post)))
+					:intro (funcall render 'intro blog-post) 
+					:body  (funcall render 'body  blog-post))
 				  :stream stream)))))
 
 (defun view-blog-post-page()
-  (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string) 'render-md))
+  (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string*) 'render-post))
 
 ;;
 ;; Somehow we end up with a extra space at the start of the intro and body
@@ -955,7 +1006,7 @@
 ;; Hence the string is stripped of spaces etc.. 
 ;;
 (defun save-blog-post() 
-  (let ((blog-post (get-live-blog-post (hunchentoot:query-string))))
+  (let ((blog-post (get-live-blog-post (hunchentoot:query-string*))))
     (setf (title    blog-post) (hunchentoot:post-parameter "title"))
     (setf (intro    blog-post) (str-strip (hunchentoot:post-parameter "intro")))
     (setf (body     blog-post) (str-strip (hunchentoot:post-parameter  "body")))
@@ -985,7 +1036,7 @@
 	     (let ((fn (namestring(car params))))
 	       (with-open-file (stream fn :direction :input)
 		 (split-sequence (slurp-stream stream) (<title>) (<split>))))))
-    (let ((blog-post (get-blog-post (hunchentoot:query-string))))
+    (let ((blog-post (get-blog-post (hunchentoot:query-string*))))
       (multiple-value-bind 
 	    (title intro body) (read-file (hunchentoot:post-parameter "file"))
 	(setf (title  blog-post) title) 
@@ -995,7 +1046,7 @@
       (redirect-to-edit-page blog-post))))
 
 (defun discard-blog-post()
-  (let ((blog-posts (get-instances-by-value 'blog-post 'url-part (hunchentoot:query-string))))
+  (let ((blog-posts (get-instances-by-value 'blog-post 'url-part (hunchentoot:query-string*))))
     (dolist (blog-post blog-posts)
       (setf (gc-bit blog-post) t))
     (hunchentoot:redirect "/" )))
@@ -1021,16 +1072,16 @@
 
 
 (defun create-blog-post-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (create-empty-blog-post 
+  (cond ((eq (hunchentoot:request-method*) :GET)  (create-empty-blog-post 
 						  (template-path "post-edit.tmpl")
-						  (hunchentoot:query-string)))
-	((eq (hunchentoot:request-method) :POST) (save-blog-post))))
+						  (hunchentoot:query-string*)))
+	((eq (hunchentoot:request-method*) :POST) (save-blog-post))))
 
 (defun edit-blog-post-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (generate-blog-post-page 
+  (cond ((eq (hunchentoot:request-method*) :GET)  (generate-blog-post-page 
 						  (template-path "post-edit.tmpl")
-						  (hunchentoot:query-string)))
-	((eq (hunchentoot:request-method) :POST) (save-blog-post))))
+						  (hunchentoot:query-string*)))
+	((eq (hunchentoot:request-method*) :POST) (save-blog-post))))
 
 (defun simple-template(p) 
   (with-open-file (stream p :direction :input)
@@ -1053,16 +1104,14 @@
   (hunchentoot:redirect "/" ))
 
 (defun import-remote ()
-  (format nil "this is a test : ~A" (hunchentoot:post-parameters) ) )
+  (format nil "this is a test : ~A" (hunchentoot:post-parameters*) ) )
 
 (defun import-local()
   ( do-import (hunchentoot:post-parameter "repo-path")))
 
-
 (defun import-repo-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (generate-import-page))
-	((eq (hunchentoot:request-method) :POST) ( do-import (hunchentoot:post-parameter "file")))))
-
+  (cond ((eq (hunchentoot:request-method*) :GET)  (generate-import-page))
+	((eq (hunchentoot:request-method*) :POST) ( do-import (hunchentoot:post-parameter "file")))))
 
 (defun generate-options-page()
   (labels ((checked?(fn)
@@ -1131,7 +1180,7 @@
   (let ((which (hunchentoot:post-parameter "which"))
 	(file  (hunchentoot:post-parameter "file")))
     (labels ((empty-qs()
-	       (eq 0 (length (hunchentoot:query-string)))))
+	       (eq 0 (length (hunchentoot:query-string*)))))
       (cond ( (empty-qs)(progn (save-options-main) 
 			       (hunchentoot:redirect "/" )))
 	    ( t         (progn (save-resource which file)
@@ -1139,12 +1188,12 @@
 
 
 (defun options-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (generate-options-page))
-	((eq (hunchentoot:request-method) :POST) (save-options))))
+  (cond ((eq (hunchentoot:request-method*) :GET)  (generate-options-page))
+	((eq (hunchentoot:request-method*) :POST) (save-options))))
 
 (defun discard-blog-post-page()
-  (cond ((eq (hunchentoot:request-method) :GET)  (discard-blog-post))
-	((eq (hunchentoot:request-method) :POST) (discard-blog-post))))
+  (cond ((eq (hunchentoot:request-method*) :GET)  (discard-blog-post))
+	((eq (hunchentoot:request-method*) :POST) (discard-blog-post))))
 
 (defun undo-discards() 
   (undo-all-discards)
@@ -1176,7 +1225,7 @@
 	     (dolist (up (url-parts))
 	       (let ((fn (concatenate 'string repo-path "/" up ".html")))
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
-		   (format stream "~A" (generate-blog-post-page (template-path "post.tmpl") up 'render-md)))))))
+		   (format stream "~A" (generate-blog-post-page (template-path "post.tmpl") up 'render-post)))))))
     (publish-index-page)
     (publish-rss-page)
     (publish-other-pages)))
@@ -1210,7 +1259,7 @@
     (slurp-stream stream)))
 
 (defun static-pages()
-  (get-static-page (hunchentoot:request-uri)))
+  (get-static-page (hunchentoot:request-uri*)))
 
 
 (defun generate-static-pages()
@@ -1238,14 +1287,25 @@
 	    (hunchentoot:create-regex-dispatcher "^/drop-discards/$"  (protect 'drop-discards))
 	    (hunchentoot:create-regex-dispatcher "^/create/$"         (protect 'create-blog-post-page))))
 
+;;(defun start-server()
+;;  (open-blog-store)
+;;  (unless *bliky-server* (setf *bliky-server* (hunchentoot:start-server :port (get-bliky-port)))))
 (defun start-server()
   (open-blog-store)
-  (unless *bliky-server* (setf *bliky-server* (hunchentoot:start-server :port (get-bliky-port)))))
+  (unless *bliky-server* (progn
+			  (setf *bliky-server* (make-instance 'hunchentoot:acceptor :port (get-bliky-port)))
+			  (hunchentoot:start *bliky-server*))))
 
+
+;;(defun stop-server()
+;;  (hunchentoot:stop-server *bliky-server*)
+;;  (setf *bliky-server* nil)
+;;  (close-store))
 (defun stop-server()
-  (hunchentoot:stop-server *bliky-server*)
-  (setf *bliky-server* nil)
-  (close-store))
+  (close-store)
+  ;;(hunchentoot:stop *bliky-server*)
+  (setf *bliky-server* nil))
+  
 
 ;;;
 
