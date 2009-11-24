@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+;;
+;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
+;;
+;;    This file is part of cl-bliky.
+;;
+;;    cl-bliky is free software: you can redistribute it and/or modify
+;;    it under the terms of the GNU General Public License as published by
+;;   the Free Software Foundation, either version 3 of the License, or
+;;    (at your option) any later version.
+;;
+;;    cl-bliky is distributed in the hope that it will be useful,
+;;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;    GNU General Public License for more details.
+;;
+;;    You should have received a copy of the GNU General Public License
+;;    along with cl-bliky.  If not, see <http://www.gnu.org/licenses/>.
+;;
+;;
+
+-->
+
+<?xml-stylesheet type="text/xsl" media="screen" href="/~d/styles/rss2full.xsl"?>
+<?xml-stylesheet type="text/css" media="screen" href="http://feeds.feedburner.com/~d/styles/itemcontent.css"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+<!-- rss version='2.0' xmlns:atom="http://www.w3.org/2005/Atom" -->
+  <channel>
+    <title> <!-- tmpl_var blog-title --> </title>
+    <link>  <!-- tmpl_var blog-url --> </link>
+    <description> <!-- tmpl_var blog-description --> </description>
+    <pubDate> <!-- tmpl_var rss-generation-date --> </pubDate>
+    <!-- tmpl_loop blog-posts -->
+    <item>
+      <title> <!-- tmpl_var title --> </title>
+      <link> <!--tmpl_var blog-url  --><!--tmpl_var url-part -->.html </link>
+      <description> <!-- tmpl_var intro --> </description> 
+      <content:encoded><![CDATA[<!-- tmpl_var cdata --> ]]></content:encoded>
+      <guid> <!-- tmpl_var blog-url --><!-- tmpl_var url-part -->.html </guid>      
+      <pubDate> <!-- tmpl_var timestamp --> </pubDate>
+    </item>
+    <!-- /tmpl_loop -->
+  </channel>
+</rss>
+

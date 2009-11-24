@@ -41,7 +41,6 @@
 
 (defconstant USRMODE (logior sb-posix:s-irusr sb-posix:s-ixusr sb-posix:s-iwusr))
 
-(defvar *blog-store-location* (not t))
 (defvar *bliky-server*        (not t))
 
 ;;format classes
@@ -76,7 +75,11 @@
 ;(setf (hunchentoot:log-file) "/tmp/error.file")
 (setf hunchentoot:*message-log-pathname* "/tmp/error.file")
 
-
+(defun filter(fun lst)
+  (let ((l))
+    (dolist (obj lst)
+      (when (funcall fun obj) (push obj l)))
+    (nreverse l)))
 
 (defun after (Funs args)
   (labels ((after* (Funs args)
@@ -130,15 +133,44 @@
 	    ((equalp "sidebar" s)    (sidebar))
 	    ( t                     (post))))))
 
+(defun string-split(s sep)
+  (let ((l ())
+	(str (string-trim '(#\Space) s)))
+    (do ((pos  (position sep str :test #'string=)
+	       (position sep str :test #'string=)))
+	((or (null pos) (eql 0 pos)))
+      (push (string-left-trim '(#\Space) (subseq str 0 pos)) l)
+      (setf str (string-left-trim '(#\Space) (subseq str (+ pos 1) ))))
+    (nreverse (cons str l))))
+
+(defun read-lines(file)
+  (let ((rlines ()))
+    (with-open-file (stream file :direction :input)
+      (do ((line (read-line stream nil 'eof)
+		 (read-line stream nil 'eof)))
+	  ((eql line 'eof))
+	(push line rlines)))
+    rlines))
+
+;;--------------basic config file---------------
+
+(defun read-db-config(fn) 
+  (labels ((!comment?(str) 
+	     (if ( < 0 (length str) )
+		 (not (char= (char str 0) #\#))
+		 (not t))))
+    (mapcar (lambda (s) (string-split s ":") )
+	    (filter #'!comment? 
+		    (mapcar #'str-strip 
+			    (read-lines fn))))))
+
+(defun find-db-config(key config)
+  (cadr (find-if (lambda (s) (string= (car s) key) ) config)))
+
 ;;----string cleaning--------------------------------------
 ;; TODO : add eol char to wsb
 ;; this needs to be filtered out in the regular case before appending to the accumulator.
 ;; If an eol is encountered with an eol in the wsb then insert a break
-(defun filter(fun lst)
-  (let ((l))
-    (dolist (obj lst)
-      (when (funcall fun obj) (push obj l)))
-    (nreverse l)))
 
 
 (defun clean(s) 
@@ -320,11 +352,6 @@
 ;;--------------settings-----------------
 ;;
 ;;
-(defun blog-store-location()
-  (if *blog-store-location*
-      *blog-store-location*
-      (let ((home (sb-posix:getenv "HOME")))
-	(ensure-directories-exist (format nil "~A/Data/bdb/store/blogs/" home)))))
 
 (defun get-settings()
   (let ((eb (get-from-root 'blog-settings)))
@@ -428,16 +455,32 @@
 	  (create-if-missing path)
 	  (set-bliky-pathname path name)))))
 
-
 ;----------------------------------
+(defun blog-store-location*()
+  (let* ((home (sb-posix:getenv "HOME"))
+	 (path (format nil "~A/.blog-store.db" home)))
+    path))
+
+(defun get-blog-store-location(name)
+  (find-db-config name (read-db-config (blog-store-location*))))
+
 (defun set-template-pathname(p)
   (set-bliky-pathname p 'template-pathname))
   
 (defun get-template-pathname()
   (labels ((df-path()
-	     (let ((home (sb-posix:getenv "HOME")))
-	       (format nil "~A/cl-bliky" home))))
+	     (let ((home (sb-posix:getenv "BLIKYHOME")))
+	       (format nil "~A/templates/" home))))
     (get-bliky-pathname 'template-pathname #'df-path)))
+
+(defun set-styles-pathname(p)
+  (set-bliky-pathname p 'styles-pathname))
+  
+(defun get-styles-pathname()
+  (labels ((df-path()
+	     (let ((home (sb-posix:getenv "BLIKYHOME")))
+	       (format nil "~A/styles/" home))))
+    (get-bliky-pathname 'styles-pathname #'df-path)))
 
 ;;---
 (defun set-script-pathname(p)
@@ -744,7 +787,6 @@
 		     (str-strip (rm-wrapper-tags (to-wrapped-html lst)))
 		   (error(c) 
 		     (declare (ignore c))
-		     (format t "error ~%~A" c)
 		     (cons IMPORT-FAILED-MSG lst)))))
 	(cond ((equal "post-timestamp-id"  str ) (up-ts   piece))
 	      ((equal "post-timestamp"     str ) (up-ts   piece))
@@ -807,8 +849,8 @@
 	(add-to-root "blog-posts" blog-posts)
 	(blog-posts))))
 
-(defun open-blog-store() 
-  (let ((blog-store (list :BDB (blog-store-location) )))
+(defun open-blog-store(name) 
+  (let ((blog-store (list :BDB (get-blog-store-location name) )))
     (if (null *store-controller*)  
 	(open-store  blog-store :recover t)
 	(print "store already opened"))))
@@ -843,9 +885,16 @@
 
 
 (defun style-css-path()
-  (concatenate 'string (namestring (get-template-pathname)) "/style.css"))
+  (concatenate 'string (namestring (get-styles-pathname)) "/style.css"))
 
-(defun style-sheet()
+(defun inject-style-sheet()
+  (labels ((read-sheet() 
+	     (with-open-file (stream (style-css-path) :direction :input)
+	       (slurp-stream stream))))
+    (let ((sheet (read-sheet)))
+      ( format nil "<style type=\"text/css\"> ~A </style>" sheet))))
+
+(defun style-sheet*()
   (with-open-file (stream (style-css-path) :direction :input)
     (slurp-stream stream)))
 
@@ -957,12 +1006,12 @@
 	     :blog-posts          (collect-posts    #'rss-feed-format))
        :stream stream))))
 
-(defun generate-index-page(tlf &key create)
+(defun generate-index-page(tlf &key create (style-sheet 'inject-style-sheet))
   (with-output-to-string (stream)
     (let ((html-template:*string-modifier* #'identity))
       (html-template:fill-and-print-template
        (template-path "index.tmpl")
-       (list :style-sheet (style-sheet)
+       (list :style-sheet (funcall style-sheet)
 	     (unless (get-offline?) :google-analytics) (unless (get-offline?) (get-google-analytics))
 	     :rss-link (if (get-offline?) "<h2>rss</h2>" (get-rss-link))
 	     (if create :edit_part) (if create t) 
@@ -979,14 +1028,15 @@
 (defun generate-editable-index-page()
   (generate-index-page #'use-edit-template :create t))
 
-(defun generate-blog-post-page(tmpl url-part &optional (render 'render-identity))
+(defun generate-blog-post-page(tmpl url-part &key (render 'render-identity) 
+			       (style-sheet 'inject-style-sheet))
     (with-output-to-string (stream)
 			   (let ((blog-post (get-live-blog-post url-part))
 				 (html-template:*string-modifier* #'identity))
 			     (if blog-post
 				 (html-template:fill-and-print-template
 				  tmpl
-				  (list :style-sheet (style-sheet)
+				  (list :style-sheet (funcall style-sheet)
 					:blog-title (blog-title)
 					:title (title blog-post)
 					:url_part url-part
@@ -998,7 +1048,7 @@
 				  :stream stream)))))
 
 (defun view-blog-post-page()
-  (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string*) 'render-post))
+  (generate-blog-post-page (template-path "post.tmpl") (hunchentoot:query-string*) :render 'render-post))
 
 ;;
 ;; Somehow we end up with a extra space at the start of the intro and body
@@ -1092,7 +1142,7 @@
     (let ((html-template:*string-modifier* #'identity))
       (html-template:fill-and-print-template
        (template-path "import.tmpl")
-       (list :style-sheet (style-sheet)
+       (list :style-sheet (inject-style-sheet)
 	     :blog-title (blog-title)
 	     :repo-name (infer-repo-name)
 	     :remote-repo (get-remote-repo)
@@ -1120,7 +1170,7 @@
       (let ((html-template:*string-modifier* #'identity))
 	(html-template:fill-and-print-template
 	 (template-path "options.tmpl")
-	 (list :style-sheet (style-sheet)
+	 (list :style-sheet (inject-style-sheet)
 	       :blog-title          (blog-title)
 	       :bliky-port          (get-bliky-port)
 	       :idiot-location      (get-idiot-location)
@@ -1129,6 +1179,7 @@
 	       :is-mainstore        (checked? #'get-mainstore? )
 	       :is-offline          (checked? #'get-offline?) 
 	       :template-pathname   (get-template-pathname)
+	       :styles-pathname     (get-styles-pathname)
 	       :script-pathname     (get-script-pathname)
 	       :contact-info        (clean-str (str-strip (get-contact-info)))
 	       :rss-image-link      (clean-str (str-strip (get-rss-link)))
@@ -1150,6 +1201,7 @@
   (save-option  #'set-repo-pathname     "repo-pathname")
   (save-option  #'set-sandbox-pathname  "sandbox-pathname")
   (save-option  #'set-template-pathname "template-pathname")
+  (save-option  #'set-styles-pathname   "styles-pathname")
   (save-option  #'set-script-pathname   "script-pathname")
   (save-option  #'set-blog-title        "blog-title")
   (save-option  #'set-remote-repo       "remote-repo")
@@ -1207,7 +1259,7 @@
   (labels ((publish-index-page()
 	     (let ((fn (concatenate 'string repo-path "/index.html")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
-		 (format stream "~A" (generate-index-page #'use-static-template))
+		 (format stream "~A" (generate-index-page #'use-static-template :style-sheet 'inject-style-sheet))
 		  ;;(generate-index-page #'use-static-template)
 			 )))
 	   (publish-rss-page()
@@ -1225,7 +1277,9 @@
 	     (dolist (up (url-parts))
 	       (let ((fn (concatenate 'string repo-path "/" up ".html")))
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
-		   (format stream "~A" (generate-blog-post-page (template-path "post.tmpl") up 'render-post)))))))
+		   (format stream "~A" (generate-blog-post-page (template-path "post.tmpl") up 
+								:render 'render-post 
+								:style-sheet 'inject-style-sheet)))))))
     (publish-index-page)
     (publish-rss-page)
     (publish-other-pages)))
@@ -1287,26 +1341,23 @@
 	    (hunchentoot:create-regex-dispatcher "^/drop-discards/$"  (protect 'drop-discards))
 	    (hunchentoot:create-regex-dispatcher "^/create/$"         (protect 'create-blog-post-page))))
 
-;;(defun start-server()
-;;  (open-blog-store)
-;;  (unless *bliky-server* (setf *bliky-server* (hunchentoot:start-server :port (get-bliky-port)))))
-(defun start-server()
-  (open-blog-store)
-  (unless *bliky-server* (progn
-			  (setf *bliky-server* (make-instance 'hunchentoot:acceptor :port (get-bliky-port)))
-			  (hunchentoot:start *bliky-server*))))
+(defun start-server*()
+  (setf *bliky-server* (make-instance 'hunchentoot:acceptor :port (get-bliky-port)))
+  (hunchentoot:start *bliky-server*))
+
+(defun start-server(name)
+  (open-blog-store name)
+  (unless *bliky-server* (start-server*)))
 
 
 ;;(defun stop-server()
 ;;  (hunchentoot:stop-server *bliky-server*)
 ;;  (setf *bliky-server* nil)
 ;;  (close-store))
+
 (defun stop-server()
   (close-store)
   ;;(hunchentoot:stop *bliky-server*)
   (setf *bliky-server* nil))
   
-
-;;;
-
 

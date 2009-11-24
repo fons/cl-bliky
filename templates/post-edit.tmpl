@@ -1,0 +1,65 @@
+<!---
+;;
+;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
+;;
+;;    This file is part of cl-bliky.
+;;
+;;    cl-bliky is free software: you can redistribute it and/or modify
+;;    it under the terms of the GNU General Public License as published by
+;;   the Free Software Foundation, either version 3 of the License, or
+;;    (at your option) any later version.
+;;
+;;    cl-bliky is distributed in the hope that it will be useful,
+;;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;    GNU General Public License for more details.
+;;
+;;    You should have received a copy of the GNU General Public License
+;;    along with cl-bliky.  If not, see <http://www.gnu.org/licenses/>.
+;;
+;;
+
+--->
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+  <head>
+    <title> Create or edit a blog post </title>
+    <!-- tmpl_var style-sheet -->
+  </head>  
+  <body>
+    <div id="edit-header">
+      <a href="/"> <h1> Edit blog post </h1> </a>
+    </div>
+
+    <div id="edit-page">
+      <div id="intro-buttons">
+	<form enctype="multipart/form-data" method="post" action="save-file?<!-- tmpl_var url_part -->">
+	  <input type="file"   size="40"   name="file" value="select file" >
+	  <input type="submit" size="20"   name="file" value="upload">
+	</form>
+
+	<!-- The main form closes all the way down -->
+	<form action="?<!-- tmpl_var url_part -->" method="post">
+	  <input type="submit" value="save post" />
+      </div>
+      <div id="intro-edit">	
+	<h2> Title </h2>
+	<input type="text" name="title" value="<!-- tmpl_var title -->" />
+	
+	<h2> Intro </h2>
+	<textarea  rows="10" type="text" name="intro"> <!-- tmpl_var intro --> </textarea>
+	
+	<h2> Body </h2>
+	<textarea  rows="30" type="text" name="body" > <!-- tmpl_var body --> </textarea>
+	
+      </div>
+    <div id="intro-buttons">
+      <input type="submit" value="save post" />    
+    </div>
+      </form>
+      <!-- end of the main form -->
+</div>
+  </body>
+</html>

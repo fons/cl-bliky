@@ -1,0 +1,146 @@
+<!---
+;;
+;;  This softeware is Copyright (c) 2009 A.F. Haffmans 
+;;
+;;    This file is part of cl-bliky.
+;;
+;;    cl-bliky is free software: you can redistribute it and/or modify
+;;    it under the terms of the GNU General Public License as published by
+;;   the Free Software Foundation, either version 3 of the License, or
+;;    (at your option) any later version.
+;;
+;;    cl-bliky is distributed in the hope that it will be useful,
+;;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;    GNU General Public License for more details.
+;;
+;;    You should have received a copy of the GNU General Public License
+;;    along with cl-bliky.  If not, see <http://www.gnu.org/licenses/>.
+;;
+;;
+
+--->
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset =UTF-8"> 
+    <title> <!-- tmpl_var blog-title --> </title>
+    <!-- tmpl_var style-sheet -->
+  </head>
+
+<body>
+  <div id="blog-title">
+    <a href="/"> <h1> <!-- tmpl_var blog-title --> </h1> </a>
+  </div>
+  <div id="mainClm">
+    <!-- tmpl_if edit_part -->
+     <hr>
+     <a href="/options/?">  [options] </a>
+     <a href="/create/?post"> [create new post] </a>
+     <a href="/create/?sidebar"> [create new side bar] </a>
+     <a href="/undo-discards/?"> [restore discarded posts] </a>
+     <a href="/drop-discards/?"> [remove discarded posts] </a>
+     <a href="/import-repo/?"> [import repo] </a>
+     <a href="/static-pages/?<!-- tmpl_var sandbox-repo-qs -->" > [preview] </a>
+     <a href="/publish/?<!-- tmpl_var main-repo-qs -->" > [publish] </a>
+     <hr>
+   <!-- /tmpl_if -->  
+
+  <!-- tmpl_loop blog-posts -->
+  <div id="<!-- tmpl_var type -->">
+    <div id="post-timestamp" >
+      <p><!-- tmpl_var timestamp --> </p> 
+    </div>
+    <h2> 
+      <!-- tmpl_if edit_part -->
+      <a href="/view/?<!--tmpl_var url-part -->"> <!-- tmpl_var title --> </a>
+    <!-- tmpl_else -->
+    <a href="/<!--tmpl_var url-part -->.html"> <!-- tmpl_var title --> </a>
+    <!-- /tmpl_if -->
+    </h2>
+    <div id="post-intro">
+      <!-- tmpl_var intro --> 
+    </div>
+    <!-- tmpl_if edit_part -->
+      <a href="/view/?<!--tmpl_var url-part -->"> <h6> Continue reading "<!-- tmpl_var title -->" </h6></a>
+    <!-- tmpl_else -->
+    <a href="/<!--tmpl_var url-part -->.html"> <h6> Continue reading "<!-- tmpl_var title -->" </h6> </a>
+    <!-- /tmpl_if -->
+
+    <!-- tmpl_if edit_part -->
+    <div id="editButton">
+      <a href="/edit/?<!--tmpl_var url-part -->"> [edit] </a>
+      <a href="/discard/?<!--tmpl_var url-part -->"> [discard] </a>
+    </div>
+    <!-- /tmpl_if -->
+  </div>
+  <!-- /tmpl_loop -->
+  <div id="footer">
+    <p>
+      Powered by <a href="http://www.github.com/fons/cl-bliky"> cl-bliky </a>
+      <!-- tmpl_var google-analytics -->
+    </p>
+  </div>
+  
+  </div>
+  <!-- end of main area -->
+  
+  <!-- start of the sidebar -->
+  
+  <div id="sideBar">
+    <div id="about">
+      <!-- tmpl_if edit_part -->
+      <a href="/view/?<!--tmpl_var about -->"> <h2> About </h2></a>
+      <!-- tmpl_else -->
+      <a href="/<!--tmpl_var about -->.html"> <h2> About </h2> </a>
+      <!-- /tmpl_if -->
+      <!-- tmpl_if edit_part -->
+      <a href="/edit/?<!--tmpl_var about -->"> [edit] </a>
+      <!-- /tmpl_if -->
+    </div>
+
+    <div id="contact">
+      <!-- tmpl_var contact-info -->
+    </div>
+    <div id="rss-feed">
+      <!-- tmpl_if edit_part -->
+      <a href="/rss-feed/?"> 
+	<!-- tmpl_else -->
+	<a href="/feed.xml"> 
+	  <!-- /tmpl_if -->
+	  <!-- tmpl_var rss-link -->
+	</a>
+    </div>
+    <div id="rss-validator">
+      <!-- tmpl_var rss-validator -->
+    </div>
+
+    <div id="side-bars">
+      
+      <!-- tmpl_loop sidebars -->
+      <h2> <!-- tmpl_var title --> </h2>
+      <div>
+	<!-- tmpl_var intro -->
+	</div>
+      <div>
+	<!-- tmpl_var body --> 
+	</div>
+      <!-- tmpl_if edit_part -->
+      <div id="editButton">
+	<a href="/edit/?<!--tmpl_var url-part -->"> [edit] </a>
+	<a href="/discard/?<!--tmpl_var url-part -->"> [discard] </a>
+      </div>
+      <!-- /tmpl_if -->
+      
+      <!-- /tmpl_loop -->
+      
+    </div> 
+    <!--end of sidebar-->
+
+</body>
+
+
+</html>
+
+
