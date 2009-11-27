@@ -18,7 +18,6 @@
 ;;    along with cl-bliky.  If not, see <http://www.gnu.org/licenses/>.
 ;;
 ;;
-;;(push #P"/home/fons/.sbcl/systems/" asdf:*central-registry*)
 
 (asdf:operate 'asdf:load-op :cl-html-parse)
 (asdf:operate 'asdf:load-op :htmlgen)
@@ -42,6 +41,7 @@
 (defconstant USRMODE (logior sb-posix:s-irusr sb-posix:s-ixusr sb-posix:s-iwusr))
 
 (defvar *bliky-server*        (not t))
+
 
 ;;format classes
 ;;controlled by the fmt-bit on the blog post object
@@ -91,7 +91,6 @@
 (defun str-strip(str)
   (string-trim '(#\Return #\Space #\Newline #\Tab #\Nul  ) str))
 
-
 (defun rm-cr(x)
   (if (equal x #\Return) #\Space x))
 
@@ -105,7 +104,6 @@
   (let ((seq (make-string (file-length stream))))
     (read-sequence seq stream)
     seq))
-
 
 (defun fmt-timestamp(st)
   ;; format rfc-822 style
@@ -142,6 +140,20 @@
       (push (string-left-trim '(#\Space) (subseq str 0 pos)) l)
       (setf str (string-left-trim '(#\Space) (subseq str (+ pos 1) ))))
     (nreverse (cons str l))))
+
+(defun string-replace*(sep new str)
+  (let ((l ()))
+    (do ((pos  (search sep str :test #'string=)
+	       (search sep str :test #'string=)))
+	((or (null pos) (eql 0 pos)))
+      (push (subseq str 0 pos) l)
+      (push new l)
+      (setf str (subseq str (+ pos (length sep) ))))
+    (nreverse (cons str l))))
+
+(defun string-replace(sep new str)
+  (let ((L (string-replace* sep new str)))
+    (reduce (lambda (s1 s2) (concatenate 'string s1 s2)) L :initial-value "")))
 
 (defun read-lines(file)
   (let ((rlines ()))
@@ -246,7 +258,7 @@
 			 (cond ((char= c #\<) t)
 			       ((char= c #\>) t)
 			       ( t             (not t)))))
-		;; if no chars to be escaped is found, return nil
+		;; if no chars to be escaped are found, return nil
 		(let* ((npos (position-if #'escape-chars-pred (subseq str start)))
 		       (epos (if npos (+ start npos) (not t) )) 
 		       (nstr (if epos (concatenate 'string (subseq str 0 epos)  
@@ -258,7 +270,6 @@
       (cond ((null (car res)) (cadr res))
 	    ( t               (escape-html-chars (cadr res) (car res)))))))
   
-
 
 (defun to-list(parts)
   (if (listp parts)
@@ -386,6 +397,15 @@
     (if val
 	val
 	(set-blog-title "blog title not set"))))
+
+(defun set-background-uri(uri)
+  (set-bliky-setting 'background-uri uri))
+
+(defun get-background-uri()
+  (let ((val (get-bliky-setting 'background-uri)))
+    (if val
+	val
+	(set-background-uri nil))))
 
 (defun set-contact-info(co)
   (set-bliky-setting 'contact-info co))
@@ -543,8 +563,8 @@
 
 ;;-----------------------------------------------------------------------
 
-(defun blog-title()
-  (get-blog-title))
+;;(defun blog-title()
+;;  (get-blog-title))
 
 (defun contact-info()
   (get-contact-info))
@@ -883,21 +903,28 @@
   (cond ((eq nil (url-part obj))
 	 (setf (url-part obj) (make-url-part (title obj)))))) 
 
-
 (defun style-css-path()
   (concatenate 'string (namestring (get-styles-pathname)) "/style.css"))
 
-(defun inject-style-sheet()
-  (labels ((read-sheet() 
-	     (with-open-file (stream (style-css-path) :direction :input)
-	       (slurp-stream stream))))
-    (let ((sheet (read-sheet)))
-      ( format nil "<style type=\"text/css\"> ~A </style>" sheet))))
+(defun background-css(uri)
+  (format nil "background-image:url('~A')" uri))
 
-(defun style-sheet*()
+(defun add-background(str) 
+  (let ( (background (get-background-uri)))
+    (if  background
+	 (string-replace "#:background-image" (background-css background) str)
+	 str)))
+
+(defun cat-style-sheet()
   (with-open-file (stream (style-css-path) :direction :input)
-    (slurp-stream stream)))
+    (add-background (slurp-stream stream))))
 
+(defun inject-style-sheet()
+    (let ((sheet (cat-style-sheet)))
+      ( format nil "<style type=\"text/css\"> ~A </style>" sheet)))
+
+(defun online-style-sheet()
+  (format nil "<link rel=\"stylesheet\" href=\"/style.css\" type=\"text/css\"/>"))
 
 ;;needs to get all instances
 (defun discard-post-by-type(type)
@@ -999,7 +1026,7 @@
     (let ((html-template:*string-modifier* #'identity))
       (html-template:fill-and-print-template
        (template-path "rss.tmpl")
-       (list :blog-title (blog-title)
+       (list :blog-title (get-blog-title)
 	     :blog-url   (blog-url)
 	     :blog-description (blog-description)
 	     :rss-generation-date (fmt-timestamp (get-universal-time)) 
@@ -1015,7 +1042,7 @@
 	     (unless (get-offline?) :google-analytics) (unless (get-offline?) (get-google-analytics))
 	     :rss-link (if (get-offline?) "<h2>rss</h2>" (get-rss-link))
 	     (if create :edit_part) (if create t) 
-	     :blog-title       (blog-title)
+	     :blog-title       (get-blog-title)
 	     :main-repo-qs     (main-repo-qs)
 	     :sandbox-repo-qs  (sandbox-repo-qs)
 	     (unless (get-offline?) :contact-info)  (unless (get-offline?) (contact-info))
@@ -1037,7 +1064,7 @@
 				 (html-template:fill-and-print-template
 				  tmpl
 				  (list :style-sheet (funcall style-sheet)
-					:blog-title (blog-title)
+					:blog-title (get-blog-title)
 					:title (title blog-post)
 					:url_part url-part
 					:timestamp (fmt-timestamp (timestamp blog-post))
@@ -1143,7 +1170,7 @@
       (html-template:fill-and-print-template
        (template-path "import.tmpl")
        (list :style-sheet (inject-style-sheet)
-	     :blog-title (blog-title)
+	     :blog-title (get-blog-title)
 	     :repo-name (infer-repo-name)
 	     :remote-repo (get-remote-repo)
 	     :repo-pathname  (get-repo-pathname))
@@ -1170,8 +1197,9 @@
       (let ((html-template:*string-modifier* #'identity))
 	(html-template:fill-and-print-template
 	 (template-path "options.tmpl")
-	 (list :style-sheet (inject-style-sheet)
-	       :blog-title          (blog-title)
+	 (list :style-sheet         (inject-style-sheet)
+	       :blog-title          (get-blog-title)
+	       :background-uri      (get-background-uri)
 	       :bliky-port          (get-bliky-port)
 	       :idiot-location      (get-idiot-location)
 	       :remote-repo         (get-remote-repo)
@@ -1204,6 +1232,7 @@
   (save-option  #'set-styles-pathname   "styles-pathname")
   (save-option  #'set-script-pathname   "script-pathname")
   (save-option  #'set-blog-title        "blog-title")
+  (save-option  #'set-background-uri    "background-uri")
   (save-option  #'set-remote-repo       "remote-repo")
   (save-option  #'set-google-analytics  "web-analytics")
   (save-option  #'set-contact-info      "contact-info")
@@ -1259,9 +1288,15 @@
   (labels ((publish-index-page()
 	     (let ((fn (concatenate 'string repo-path "/index.html")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
-		 (format stream "~A" (generate-index-page #'use-static-template :style-sheet 'inject-style-sheet))
+		 (format stream "~A" (generate-index-page #'use-static-template :style-sheet 'online-style-sheet))
 		  ;;(generate-index-page #'use-static-template)
 			 )))
+
+	   (publish-style-sheet()
+	     (let ((fn (concatenate 'string repo-path "/style.css")))
+	       (with-open-file (stream fn :direction :output :if-exists :supersede)
+		 (format stream "~A" (cat-style-sheet)))))
+	   
 	   (publish-rss-page()
 	     (let ((fn (concatenate 'string repo-path "/feed.xml")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
@@ -1279,9 +1314,10 @@
 		 (with-open-file (stream fn :direction :output :if-exists :supersede)
 		   (format stream "~A" (generate-blog-post-page (template-path "post.tmpl") up 
 								:render 'render-post 
-								:style-sheet 'inject-style-sheet)))))))
+								:style-sheet 'online-style-sheet)))))))
     (publish-index-page)
     (publish-rss-page)
+    (publish-style-sheet)
     (publish-other-pages)))
 
 (defun publish-pages()
@@ -1359,5 +1395,4 @@
   (close-store)
   ;;(hunchentoot:stop *bliky-server*)
   (setf *bliky-server* nil))
-  
 

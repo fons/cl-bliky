@@ -41,7 +41,7 @@ body{
       #color:#000011;
       font-size : 12px;
       font:normal 100% Sans-Serif;
-      background-image:url('http://github.com/fons/blog-images/raw/master/background/greenmountains.JPG');
+      #:background-image;
       }
 
 p {
