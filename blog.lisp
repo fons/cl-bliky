@@ -675,6 +675,7 @@
 
 (defun git-add-all-posts()
   (run-git "add *.html")
+  (run-git "add *.css")
   (run-git "add *.xml"))
 
 (defun git-publish-branch()
@@ -1320,7 +1321,7 @@
     (publish-style-sheet)
     (publish-other-pages)))
 
-(defun publish-pages()
+(defun publish-pages*()
   (let ((repo-pathname (get-repo-pathname)))
     (switch-to-repo repo-pathname)
     (git-publish-branch)
@@ -1332,8 +1333,12 @@
     (git-master-branch)
     (git-merge)
     (git-publish)
-    (switch-to-default-path))
-    (hunchentoot:redirect "/"))
+    (switch-to-default-path)))
+
+
+(defun publish-pages()
+  (publish-pages*)
+  (hunchentoot:redirect "/"))
 ;
 (defun index-unless(d)
   (if (> (length d) 1)
