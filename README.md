@@ -18,7 +18,6 @@ from a server like apache or nginx as well.
 ## Dependencies
 cl-bliky depends on the following packages :
 
-
 * [sbcl](http://sbcl.sourceforge.net/)
 * [elephant](http://common-lisp.net/project/elephant/) 
   with [berkley db](http://www.oracle.com/technology/products/berkeley-db/index.html).
@@ -31,6 +30,7 @@ cl-bliky depends on the following packages :
 
 ## Initial Startup
 
+You can use asdf-install on cl-bliky.asd.
 
 
 
