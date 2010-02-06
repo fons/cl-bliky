@@ -265,7 +265,7 @@
       (list parts)))
 
 ;;--------------------------------------------------------------------------
-(defpclass blog-p ()
+(defpclass blog-post ()
   ((title :initarg :title
 		   :accessor title)
    (intro :initarg :intro
@@ -385,6 +385,15 @@
     (if val
 	val
 	(set-blog-title "blog title not set"))))
+
+(defun set-google-meta-tag(tag)
+  (set-bliky-setting 'google-meta-tag tag))
+
+(defun get-google-meta-tag()
+  (let ((val (get-bliky-setting 'google-meta-tag)))
+    (if val
+	val
+	(set-google-meta-tag ""))))
 
 (defun set-background-uri(uri)
   (set-bliky-setting 'background-uri uri))
@@ -579,6 +588,13 @@
 
 
 ;----------------------------
+(defun google-meta-tag-path()
+  (concatenate 'string (namestring (get-script-pathname)) "/google-meta-tag.js"))
+
+(defun load-google-meta-tag()
+  (load-script #'set-google-meta-tag (google-meta-tag-path)))
+
+;;----------------------------
 (defun contact-js-path()
   (concatenate 'string (namestring (get-script-pathname)) "/contact-info.js"))
 
@@ -1032,6 +1048,7 @@
 	     :rss-link (if (get-offline?) "<h2>rss</h2>" (get-rss-link))
 	     (if create :edit_part) (if create t) 
 	     :blog-title       (get-blog-title)
+	     :google-meta-tag  (get-google-meta-tag)
 	     :main-repo-qs     (main-repo-qs)
 	     :sandbox-repo-qs  (sandbox-repo-qs)
 	     (unless (get-offline?) :contact-info)  (unless (get-offline?) (get-contact-info))
@@ -1110,6 +1127,7 @@
 	(setf (body   blog-post) body)
 	(setf (url-part blog-post) (make-url-part (title blog-post))))
       (redirect-to-edit-page blog-post))))
+
 
 (defun discard-blog-post()
   (let ((blog-posts (get-instances-by-value 'blog-post 'url-part (hunchentoot:query-string*))))
@@ -1198,6 +1216,7 @@
 	       :template-pathname   (get-template-pathname)
 	       :styles-pathname     (get-styles-pathname)
 	       :script-pathname     (get-script-pathname)
+	       :google-meta-tag     (clean-str (str-strip (get-google-meta-tag)))
 	       :contact-info        (clean-str (str-strip (get-contact-info)))
 	       :rss-image-link      (clean-str (str-strip (get-rss-link)))
 	       :rss-validator       (clean-str (str-strip (get-rss-validator)))
@@ -1223,6 +1242,7 @@
   (save-option  #'set-blog-title        "blog-title")
   (save-option  #'set-background-uri    "background-uri")
   (save-option  #'set-remote-repo       "remote-repo")
+  (save-option  #'set-google-meta-tag   "google-meta-tag")
   (save-option  #'set-google-analytics  "web-analytics")
   (save-option  #'set-contact-info      "contact-info")
   (save-option  #'set-rss-link          "rss-image-link")
@@ -1232,10 +1252,11 @@
 (defun save-resource(action params)
   (labels ((make-lookup()
 	     (let ((lst))
-	       (setf lst (acons "web-analytics"  #'set-google-analytics lst))
-	       (setf lst (acons "contact-info"   #'set-contact-info  lst))
-	       (setf lst (acons "rss-validator"  #'set-rss-validator lst))
-	       (setf lst (acons "rss-image-link" #'set-rss-link lst))
+	       (setf lst (acons "web-analytics"   #'set-google-analytics lst))
+	       (setf lst (acons "google-meta-tag" #'set-google-meta-tag lst))
+	       (setf lst (acons "contact-info"    #'set-contact-info  lst))
+	       (setf lst (acons "rss-validator"   #'set-rss-validator lst))
+	       (setf lst (acons "rss-image-link"  #'set-rss-link lst))
 	       lst))
 	   ;;
 	   (lookup-action (action lst)

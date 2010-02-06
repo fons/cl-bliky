@@ -89,9 +89,17 @@
       location of background image 
       <hr>
 
+      This is the google meta tag used for 
+      <a href="https://www.google.com/webmasters/verification/home?hl=en" > google site verification. </a>
+      <textarea  rows="5" cols="150" type="text" name="google-meta-tag"> 
+	<!-- tmpl_var google-meta-tag --> 
+      </textarea>
+
+      <hr>
+
       This is the html which enables the contact form generated
       by <a href=\"http://kontactr.com/user/prognotes\"> kontactr.com </a>
-      <textarea  rows="3" cols="150" type="text" name="contact-info"> 
+      <textarea  rows="5" cols="150" type="text" name="contact-info"> 
 	<!-- tmpl_var contact-info --> 
       </textarea>
       This is web the analytics javascript from <a href="http://www.google.com"> google analytics </a>
@@ -99,11 +107,11 @@
 	<!-- tmpl_var web-analytics --> 
       </textarea>
       This is the image used for the rss link.
-      <textarea  rows="3" cols="150" type="text" name="rss-image-link"> 
+      <textarea  rows="5" cols="150" type="text" name="rss-image-link"> 
 	<!-- tmpl_var rss-image-link --> 
       </textarea>
       This is the image used for the rss link validator.
-      <textarea  rows="3" cols="150" type="text" name="rss-validator"> 
+      <textarea  rows="5" cols="150" type="text" name="rss-validator"> 
 	<!-- tmpl_var rss-validator --> 
       </textarea>
       <input type="submit" value="save options" />    
@@ -118,6 +126,7 @@
 	<option value="web-analytics"         > web analytics
 	<option value="rss-image-link"        > rss image link
 	<option value="rss-validator"         > rss validator 
+	<option value="google-meta-tag"       > google-meta-tag
       </select>
       <input type="file"   size="40"   name="file" value="select file" >
       <input type="submit" size="20"   name="file" value="upload">
