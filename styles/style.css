@@ -48,7 +48,7 @@ p {
     margin:0px;
     padding:0x;
     ####background:#ffffff;
-    background:#eee9e9;
+    ##background:#eee9e9;
     #color:#000011;
     font-size : 12px;
     font:normal 100% Sans-Serif;
@@ -197,11 +197,12 @@ Comment : This is the sidebar to the left of the page
           }
 
 #sideBar p {
-             margin:0px 0px 0px 0px;
+             margin:15px 15px 15px 15px;
              text-align:left;
              #background:#eee9e9;
              #font-size : 12px;
-             #font-size : 20px;
+             font:Sans-Serif;
+             font-size : 14px;
              #font:normal 100% Sans-Serif;
              }
 
@@ -238,6 +239,9 @@ Comment : This is the sidebar to the left of the page
                }
 
 #contact a {
+             #color:#555555
+             }
+#rss-feed p {
              #color:#555555
              }
 

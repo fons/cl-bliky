@@ -265,7 +265,7 @@
       (list parts)))
 
 ;;--------------------------------------------------------------------------
-(defpclass blog-post ()
+(defpclass blog-p ()
   ((title :initarg :title
 		   :accessor title)
    (intro :initarg :intro
@@ -1008,7 +1008,7 @@
 
 (defun blog-description() 
   (let ((post (car (get-instances-by-value 'blog-post 'type-bit (about)))))
-    (intro post)))
+    (escape-html-chars (str-strip (intro post)))))
 
 (defun generate-rss-page()
   (with-output-to-string (stream)
@@ -1019,7 +1019,7 @@
 	     :blog-url   (blog-url)
 	     :blog-description (blog-description)
 	     :rss-generation-date (fmt-timestamp (get-universal-time)) 
-	     :blog-posts          (collect-posts    #'rss-feed-format))
+	     :blog-posts          (collect-posts    #'rss-feed-format) )
        :stream stream))))
 
 (defun generate-index-page(tlf &key create (style-sheet 'inject-style-sheet))
@@ -1290,6 +1290,7 @@
 	     (let ((fn (concatenate 'string repo-path "/feed.xml")))
 	       (with-open-file (stream fn :direction :output :if-exists :supersede)
 		 (format stream "~A" (generate-rss-page)))))
+
 	   (url-parts()
 	     (let ((lst))
 	       (labels ((up(u) 
