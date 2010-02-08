@@ -29,7 +29,7 @@
 (defvar      IMPORT-FAILED-MSG    "I was unable to convert this post back to html during the import")
 (defvar      USRMODE (logior sb-posix:s-irusr sb-posix:s-ixusr sb-posix:s-iwusr))
 (defvar      *bliky-server*        (not t))
-
+(defvar      *BLIKY-HOME*           "location of the cl-bliky repository") 
 
 ;;format classes
 ;;controlled by the fmt-bit on the blog post object
@@ -395,6 +395,24 @@
 	val
 	(set-google-meta-tag ""))))
 
+(defun set-follow-on-twitter(tag)
+  (set-bliky-setting 'follow-on-twitter tag))
+
+(defun get-follow-on-twitter()
+  (let ((val (get-bliky-setting 'follow-on-twitter)))
+    (if val
+	val
+	(set-follow-on-twitter ""))))
+
+(defun set-email-subscription(tag)
+  (set-bliky-setting 'email-subscription tag))
+
+(defun get-email-subscription()
+  (let ((val (get-bliky-setting 'email-subscription)))
+    (if val
+	val
+	(set-email-subscription ""))))
+
 (defun set-background-uri(uri)
   (set-bliky-setting 'background-uri uri))
 
@@ -486,7 +504,7 @@
   
 (defun get-template-pathname()
   (labels ((df-path()
-	     (let ((home (sb-posix:getenv "BLIKYHOME")))
+	     (let ((home *BLIKY-HOME*))
 	       (format nil "~A/templates/" home))))
     (get-bliky-pathname 'template-pathname #'df-path)))
 
@@ -495,7 +513,7 @@
   
 (defun get-styles-pathname()
   (labels ((df-path()
-	     (let ((home (sb-posix:getenv "BLIKYHOME")))
+	     (let ((home *BLIKY-HOME*))
 	       (format nil "~A/styles/" home))))
     (get-bliky-pathname 'styles-pathname #'df-path)))
 
@@ -593,6 +611,21 @@
 
 (defun load-google-meta-tag()
   (load-script #'set-google-meta-tag (google-meta-tag-path)))
+
+;;----------------------------
+(defun follow-on-twitter-path()
+  (concatenate 'string (namestring (get-script-pathname)) "/follow-on-twitter.js"))
+
+(defun load-follow-on-twitter()
+  (load-script #'set-follow-on-twitter (follow-on-twitter-path)))
+
+;;----------------------------
+
+(defun email-subscription-path()
+  (concatenate 'string (namestring (get-script-pathname)) "/email-subscription.js"))
+
+(defun load-email-subscription()
+  (load-script #'set-email-subscription (email-subscription-path)))
 
 ;;----------------------------
 (defun contact-js-path()
@@ -864,7 +897,12 @@
       (let* ((fn    (namestring f))
 	     (not-index? (not (search "/index.html" fn :from-end t)))
 	     (html? (search ".html" fn :from-end t)))
-	(when (and html? not-index?) (import-blog-post fn))))))
+	(handler-case 
+	    (when (and html? not-index?) (import-blog-post fn))
+	  (error(c)
+	    (format t "an error [~A] occured when importing post ~A at ~A" c fn repo-path)))))))
+
+
 
 ;;-------------------
 
@@ -1051,8 +1089,10 @@
 	     :google-meta-tag  (get-google-meta-tag)
 	     :main-repo-qs     (main-repo-qs)
 	     :sandbox-repo-qs  (sandbox-repo-qs)
-	     (unless (get-offline?) :contact-info)  (unless (get-offline?) (get-contact-info))
-	     (unless (get-offline?) :rss-validator) (unless (get-offline?) (get-rss-validator))
+	     (unless (get-offline?) :contact-info)       (unless (get-offline?) (get-contact-info))
+	     (unless (get-offline?) :rss-validator)      (unless (get-offline?) (get-rss-validator))
+	     (unless (get-offline?) :follow-on-twitter)  (unless (get-offline?) (get-follow-on-twitter))
+	     (unless (get-offline?) :email-subscription) (unless (get-offline?) (get-email-subscription))
 	     :about            (about-page)
 	     :sidebars         (collect-sidebars tlf)
 	     :blog-posts       (collect-posts    tlf))
@@ -1220,6 +1260,8 @@
 	       :contact-info        (clean-str (str-strip (get-contact-info)))
 	       :rss-image-link      (clean-str (str-strip (get-rss-link)))
 	       :rss-validator       (clean-str (str-strip (get-rss-validator)))
+	       :follow-on-twitter   (clean-str (str-strip (get-follow-on-twitter)))
+	       :email-subscription  (clean-str (str-strip (get-email-subscription)))
 	       :web-analytics       (clean-str (str-strip (get-google-analytics)))
 	       :sandbox-pathname    (get-sandbox-pathname))
 	 :stream stream)))))
@@ -1247,16 +1289,20 @@
   (save-option  #'set-contact-info      "contact-info")
   (save-option  #'set-rss-link          "rss-image-link")
   (save-option  #'set-rss-validator     "rss-validator")
+  (save-option  #'set-follow-on-twitter "follow-on-twitter")
+  (save-option  #'set-email-subscription "email-subscription")
   (save-option  #'set-idiot-location    "idiot-location"))
 
 (defun save-resource(action params)
   (labels ((make-lookup()
 	     (let ((lst))
-	       (setf lst (acons "web-analytics"   #'set-google-analytics lst))
-	       (setf lst (acons "google-meta-tag" #'set-google-meta-tag lst))
-	       (setf lst (acons "contact-info"    #'set-contact-info  lst))
-	       (setf lst (acons "rss-validator"   #'set-rss-validator lst))
-	       (setf lst (acons "rss-image-link"  #'set-rss-link lst))
+	       (setf lst (acons "web-analytics"      #'set-google-analytics lst))
+	       (setf lst (acons "google-meta-tag"    #'set-google-meta-tag lst))
+	       (setf lst (acons "contact-info"       #'set-contact-info  lst))
+	       (setf lst (acons "rss-validator"      #'set-rss-validator lst))
+	       (setf lst (acons "follow-on-twitter"  #'set-follow-on-twitter lst))
+	       (setf lst (acons "email-subscription" #'set-email-subscription lst))
+	       (setf lst (acons "rss-image-link"     #'set-rss-link lst))
 	       lst))
 	   ;;
 	   (lookup-action (action lst)

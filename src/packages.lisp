@@ -14,5 +14,5 @@
    :blog-post
    :stop-server
    :start-server
-   :*BLIKYHOME*
+   :*BLIKY-HOME*
    ))
