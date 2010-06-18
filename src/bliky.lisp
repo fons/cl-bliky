@@ -227,6 +227,10 @@
 		     (t                   (clean-helper (str-cdr s) accum                   wsb         t ))))))
     (coerce (nreverse (clean-helper s nil nil t)) 'string)))
 
+;;--> this is problamtic as <special char> is escaped to &<something>;
+;;--> so you get into some infinite recursion !
+;;((char= c #\&) "&amp;")
+;;((char= c #\&) t)
 
 (defun escape-html-chars(str &optional (start 0))
   ;; find the first char to be escaped, escape it, and return a list of the
@@ -394,6 +398,15 @@
     (if val
 	val
 	(set-google-meta-tag ""))))
+
+(defun set-technorati-claim(tag)
+  (set-bliky-setting 'technorati-claim tag))
+
+(defun get-technorati-claim()
+  (let ((val (get-bliky-setting 'technorati-claim)))
+    (if val
+	val
+	(set-technorati-claim ""))))
 
 (defun set-follow-on-twitter(tag)
   (set-bliky-setting 'follow-on-twitter tag))
@@ -764,17 +777,19 @@
 	      (return obj)))
 	nil)))
 
-(defun create-blog-post(title intro body type)
-  (make-instance 'blog-post :title title :intro intro :body body :type-bit type :fmt-bit (md)))
+(defun create-blog-post(title intro body type &optional (fmt-bid (md)))
+  (make-instance 'blog-post :title title :intro intro :body body :type-bit type :fmt-bit fmt-bid))
 
 (defun create-html-blog-post(title intro body type)
-  (make-instance 'blog-post :title title :intro intro :body body :type-bit type :fmt-bit (html)))
+  (create-blog-post title intro body type (html)))
 
-(defun create-blog-post-template(type)
+;  (make-instance 'blog-post :title title :intro intro :body body :type-bit type :fmt-bit (html)))
+
+(defun create-blog-post-template(type &optional (fmt-bid (md)))
   (let* ((title (format nil "new blog post dd ~A" (fmt-timestamp (get-universal-time))))
 	 (intro "")
 	 (body ""))
-    (create-blog-post title intro body type)))
+    (create-blog-post title intro body type fmt-bid)))
 
 (defun create-about-post()
   (let* ((title "About")
@@ -984,11 +999,11 @@
 	      (return obj)))
 	nil)))
 
-(defun get-blog-post(url-part) 
+(defun get-blog-post(url-part &optional (fmt-bid (md))) 
   (let ((obj (get-live-blog-post url-part)))
     (if obj
 	obj
-	(create-blog-post-template (post) ))))
+	(create-blog-post-template (post) fmt-bid ))))
 
 (defun get-about-post()
   (let ((about-post (get-instance-by-value 'blog-post 'type-bit (about))))
@@ -1022,13 +1037,29 @@
       (error(c)
 	(generate-error-page c "an error occured when generating static pages")))))
 
+(defun rss-feed-format_alt(blog-post)
+  (handler-case  
+      (list :timestamp (fmt-timestamp (timestamp blog-post))
+	    :title (title blog-post)
+	    :url-part (url-part blog-post)
+	    :intro (concatenate 'string 
+				(escape-html-chars (render-post 'intro blog-post)) 
+				(escape-html-chars (render-post 'body blog-post)))
+	    :cdata (concatenate 'string (render-md (str-strip (intro blog-post)))
+				(render-md (str-strip (body blog-post)))))
+    (error(c) 
+      (format t "an error ~A occurred when generating the rss for post ~A ~%" c (title blog-post)))))
 
 (defun rss-feed-format(blog-post)
-  (list :timestamp (fmt-timestamp (timestamp blog-post))
-	:title (title blog-post)
-	:url-part (url-part blog-post)
-	:intro (escape-html-chars (render-post 'intro blog-post))
-	:cdata (render-md (str-strip (intro blog-post)))))
+  (handler-case  
+      (list :timestamp (fmt-timestamp (timestamp blog-post))
+	    :title (title blog-post)
+	    :url-part (url-part blog-post)
+	    :intro (escape-html-chars (render-post 'intro blog-post))
+	    :cdata (concatenate 'string (render-post 'intro blog-post)
+				(render-post 'body blog-post)))
+    (error(c) 
+      (format t "an error ~A occurred when generating the rss for post ~A ~%" c (title blog-post)))))
 
 ;;(intro blog-post)
 
@@ -1168,6 +1199,28 @@
 	(setf (url-part blog-post) (make-url-part (title blog-post))))
       (redirect-to-edit-page blog-post))))
 
+(defun save-html-file(url-part fn)
+  (labels ((read-file(fn) 
+	     (with-open-file (stream fn :direction :input)
+	       (split-sequence (slurp-stream stream) (<title>) (<split>)))))
+    (let ((blog-post (get-blog-post url-part (html))))
+      (multiple-value-bind (title intro body) (read-file fn)
+	(setf (title  blog-post) title) 
+	(setf (intro  blog-post) intro) 
+	(setf (body   blog-post) body)
+	(setf (url-part blog-post) (make-url-part (title blog-post))))
+      blog-post)))
+
+#|
+    (let ((blog-post (get-blog-post (hunchentoot:query-string*))))
+      (multiple-value-bind 
+	    (title intro body) (read-file (hunchentoot:post-parameter "file"))
+	(setf (title  blog-post) title) 
+	(setf (intro  blog-post) intro) 
+	(setf (body   blog-post) body)
+	(setf (url-part blog-post) (make-url-part (title blog-post))))
+      (redirect-to-edit-page blog-post))))
+|#
 
 (defun discard-blog-post()
   (let ((blog-posts (get-instances-by-value 'blog-post 'url-part (hunchentoot:query-string*))))

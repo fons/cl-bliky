@@ -14,5 +14,6 @@
    :blog-post
    :stop-server
    :start-server
+   :save-html-file
    :*BLIKY-HOME*
    ))
